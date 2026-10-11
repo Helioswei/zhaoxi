@@ -17,6 +17,7 @@ class ZhaoxiApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
+    final fontScale = ref.watch(fontScaleProvider);
 
     return MaterialApp(
       title: '朝夕',
@@ -25,6 +26,18 @@ class ZhaoxiApp extends ConsumerWidget {
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
       themeMode: mode,
+      // 字号：在系统缩放基础上再乘一个系数（大字号无障碍）。
+      builder: (context, child) {
+        final mq = MediaQuery.of(context);
+        final systemFactor = mq.textScaler.scale(10) / 10;
+        final factor = fontScale == 'large' ? 1.2 : 1.0;
+        return MediaQuery(
+          data: mq.copyWith(
+            textScaler: TextScaler.linear(systemFactor * factor),
+          ),
+          child: child!,
+        );
+      },
       routes: {
         SettingsPage.routeName: (_) => const SettingsPage(),
         ExportPage.routeName: (_) => const ExportPage(),

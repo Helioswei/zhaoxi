@@ -59,6 +59,9 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
         q.limit(500);
       case ViewKind.undated:
         q.orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
+      case ViewKind.all:
+        // 「全部」组内是**手工顺序**（拖拽排序生效）。
+        q.orderBy([(t) => OrderingTerm(expression: t.sortOrder)]);
       default:
         q.orderBy([
           (t) => OrderingTerm(expression: t.dueAt, mode: OrderingMode.asc),
@@ -114,6 +117,38 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
   }
 
   Future<void> deleteAllTasks() => delete(tasks).go();
+
+  /// 新建任务排在最后：取当前最大值 + 一个步长。
+  Future<double> nextSortOrder() async {
+    final row = await (selectOnly(tasks)
+          ..addColumns([tasks.sortOrder.max()]))
+        .getSingle();
+    final max = row.read(tasks.sortOrder.max()) ?? 0;
+    return max + 1024;
+  }
+
+  Future<List<Task>> allOrderedBySort() =>
+      (select(tasks)..orderBy([(t) => OrderingTerm(expression: t.sortOrder)])).get();
+
+  Future<void> patchSortOrder(String id, double value) => patch(
+        id,
+        TasksCompanion(
+          sortOrder: Value(value),
+          updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+        ),
+      );
+
+  Future<void> applySortOrders(Map<String, double> values) async {
+    await batch((b) {
+      for (final entry in values.entries) {
+        b.update(
+          tasks,
+          TasksCompanion(sortOrder: Value(entry.value)),
+          where: (t) => t.id.equals(entry.key),
+        );
+      }
+    });
+  }
 
   /// 启动时用于重排：所有尚未完成、且提醒时间在未来的任务。
   Future<List<Task>> futureReminders(int nowMs) {

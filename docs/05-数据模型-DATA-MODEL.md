@@ -156,7 +156,7 @@ CREATE INDEX idx_tasks_sort_order   ON tasks(sort_order);
 | 本周 `week` | `status=0 AND due_at >= WEEK_START AND due_at < WEEK_END` | `due_at ASC, sort_order ASC` |
 | 本月 `month` | `status=0 AND due_at >= MONTH_START AND due_at < NEXT_MONTH_START` | `due_at ASC, sort_order ASC` |
 | 以后 `later` | `status=0 AND due_at >= NEXT_MONTH_START` | `due_at ASC` |
-| 全部 `all` | `status=0` | 按 **逾期→今天→明天→本周→本月→以后→待定** 顺序，**每条只进第一个匹配的组**（避免重叠入多组）；组内 `due_at ASC, sort_order ASC` |
+| 全部 `all` | `status=0` | 按 **逾期→今天→明天→本周→本月→以后→待定** 顺序，**每条只进第一个匹配的组**（避免重叠入多组）；**组内按 `sort_order`（手工拖拽顺序）** |
 | 已完成 `done` | `status=1` | `completed_at DESC`，LIMIT 500 + 加载更多 |
 
 **清单筛选**：上述任一视图都可叠加 `AND list_id = :list`（或全部清单）。

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/repeat_rule.dart';
+import '../../domain/sort_order.dart';
 import '../../domain/task_filter.dart';
 import '../../services/reminder_scheduler.dart';
 import '../dao/settings_dao.dart';
@@ -44,6 +45,7 @@ class TaskRepository {
     final now = _nowMs();
     final device = await ensureDeviceId();
     final id = _uuid.v4();
+    final sortOrder = await _db.taskDao.nextSortOrder();
     await _db.taskDao.upsert(
       TasksCompanion.insert(
         id: id,
@@ -54,7 +56,7 @@ class TaskRepository {
         dueHasTime: Value(dueHasTime),
         remindAt: Value(remindAt),
         repeatRule: Value(repeatRule),
-        sortOrder: Value(now.toDouble()),
+        sortOrder: Value(sortOrder),
         createdAt: now,
         updatedAt: now,
         originDevice: device,
@@ -205,6 +207,44 @@ class TaskRepository {
     for (final t in tasks) {
       await _syncReminder(t);
     }
+  }
+
+  // -------------------------------------------------------------- 手工排序
+
+  /// 「全部」视图内的**组内**拖拽排序。
+  ///
+  /// [beforeId] / [afterId] 是插入位置的左右邻居任务（分组头视为 null）。
+  Future<void> reorderWithinGroup({
+    required String movedId,
+    String? beforeId,
+    String? afterId,
+    bool retried = false,
+  }) async {
+    final all = await _db.taskDao.allOrderedBySort();
+    final byId = {for (final t in all) t.id: t};
+    final before = beforeId == null ? null : byId[beforeId]?.sortOrder;
+    final after = afterId == null ? null : byId[afterId]?.sortOrder;
+
+    if (!retried && needsRenormalize(before, after)) {
+      await renormalizeSortOrders();
+      await reorderWithinGroup(
+        movedId: movedId,
+        beforeId: beforeId,
+        afterId: afterId,
+        retried: true,
+      );
+      return;
+    }
+
+    final value = sortOrderBetween(before, after);
+    if (value == null) return;
+    await _db.taskDao.patchSortOrder(movedId, value);
+  }
+
+  /// 整表重排为 1024, 2048, 3072 …
+  Future<void> renormalizeSortOrders() async {
+    final all = await _db.taskDao.allOrderedBySort();
+    await _db.taskDao.applySortOrders(renormalized(all.map((t) => t.id)));
   }
 
   /// 取消旧通知 → 未完成且提醒时间在未来 → 排新通知。

@@ -240,3 +240,33 @@ class SearchQueryNotifier extends Notifier<String> {
 
 final searchQueryProvider =
     NotifierProvider<SearchQueryNotifier, String>(SearchQueryNotifier.new);
+
+/// 字号：`normal` / `large`（无障碍用，见 02 §2.7）。
+class FontScaleNotifier extends Notifier<String> {
+  @override
+  String build() {
+    _load();
+    return 'normal';
+  }
+
+  Future<void> _load() async {
+    try {
+      final raw =
+          await ref.read(databaseProvider).settingsDao.get(SettingsKeys.fontScale);
+      if (raw == 'large' && state != 'large') state = 'large';
+    } catch (_) {
+      // 用默认
+    }
+  }
+
+  Future<void> select(String value) async {
+    state = value;
+    await ref
+        .read(databaseProvider)
+        .settingsDao
+        .set(SettingsKeys.fontScale, value);
+  }
+}
+
+final fontScaleProvider =
+    NotifierProvider<FontScaleNotifier, String>(FontScaleNotifier.new);

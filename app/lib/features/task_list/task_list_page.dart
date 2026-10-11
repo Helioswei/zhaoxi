@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/db/database.dart';
@@ -20,10 +21,12 @@ class TaskListPage extends ConsumerStatefulWidget {
 class _TaskListPageState extends ConsumerState<TaskListPage> {
   bool _searchOpen = false;
   final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -32,6 +35,9 @@ class _TaskListPageState extends ConsumerState<TaskListPage> {
     if (!_searchOpen) {
       _searchController.clear();
       ref.read(searchQueryProvider.notifier).clear();
+    } else {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _searchFocus.requestFocus());
     }
   }
 
@@ -40,54 +46,71 @@ class _TaskListPageState extends ConsumerState<TaskListPage> {
     final view = ref.watch(selectedViewProvider);
     final tasksAsync = ref.watch(taskListProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('朝夕'),
-        actions: [
-          IconButton(
-            tooltip: _searchOpen ? '关闭搜索' : '搜索',
-            icon: Icon(_searchOpen ? Icons.close : Icons.search),
-            onPressed: _toggleSearch,
+    // 桌面端快捷键（Android 上无键盘，不触发）。
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyN, meta: true): () =>
+            openTaskEditSheet(context),
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true): () =>
+            openTaskEditSheet(context),
+        const SingleActivator(LogicalKeyboardKey.slash): _toggleSearch,
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_searchOpen) _toggleSearch();
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('朝夕'),
+            actions: [
+              IconButton(
+                tooltip: _searchOpen ? '关闭搜索' : '搜索（/）',
+                icon: Icon(_searchOpen ? Icons.close : Icons.search),
+                onPressed: _toggleSearch,
+              ),
+              IconButton(
+                tooltip: '设置',
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: () => Navigator.of(context).pushNamed('/settings'),
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: '设置',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.of(context).pushNamed('/settings'),
+          body: Column(
+            children: [
+              const _ListFilterBar(),
+              const _ViewBar(),
+              if (_searchOpen) _searchField(),
+              if (view == ViewKind.today && !_searchOpen) const _UndatedBanner(),
+              const Divider(height: 1),
+              Expanded(
+                child: tasksAsync.when(
+                  data: (tasks) => _TaskListBody(tasks: tasks, view: view),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('出错了：$e')),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          const _ListFilterBar(),
-          const _ViewBar(),
-          if (_searchOpen) _searchField(),
-          if (view == ViewKind.today && !_searchOpen) const _UndatedBanner(),
-          const Divider(height: 1),
-          Expanded(
-            child: tasksAsync.when(
-              data: (tasks) => _TaskListBody(tasks: tasks, view: view),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('出错了：$e')),
-            ),
+          floatingActionButton: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const QuickVoiceButton(),
+              const SizedBox(height: 12),
+              FloatingActionButton(
+                heroTag: 'add',
+                tooltip: '新建任务（⌘N）',
+                shape: const CircleBorder(),
+                backgroundColor: context.colors.primary,
+                foregroundColor: Colors.white,
+                onPressed: () => openTaskEditSheet(context),
+                child: const Icon(Icons.add),
+              ),
+            ],
           ),
-        ],
-      ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          const QuickVoiceButton(),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: 'add',
-            tooltip: '新建任务',
-            shape: const CircleBorder(),
-            backgroundColor: context.colors.primary,
-            foregroundColor: Colors.white,
-            onPressed: () => openTaskEditSheet(context),
-            child: const Icon(Icons.add),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -97,7 +120,8 @@ class _TaskListPageState extends ConsumerState<TaskListPage> {
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: TextField(
         controller: _searchController,
-        autofocus: true,
+        focusNode: _searchFocus,
+        textInputAction: TextInputAction.search,
         decoration: InputDecoration(
           hintText: '搜索标题或备注…',
           prefixIcon: const Icon(Icons.search),
@@ -198,7 +222,8 @@ class _UndatedBanner extends ConsumerWidget {
             const SizedBox(width: 6),
             Text(
               '还有 $count 件没定时间',
-              style: TextStyle(fontSize: 14, color: context.colors.onSurfaceVariant),
+              style:
+                  TextStyle(fontSize: 14, color: context.colors.onSurfaceVariant),
             ),
             const Spacer(),
             Icon(Icons.chevron_right,
@@ -208,6 +233,13 @@ class _UndatedBanner extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// 「全部」视图里的分组头（不可拖拽）。
+class _GroupHeader {
+  const _GroupHeader(this.group, this.count);
+  final String group;
+  final int count;
 }
 
 class _TaskListBody extends ConsumerWidget {
@@ -238,7 +270,7 @@ class _TaskListBody extends ConsumerWidget {
     final lists = ref.watch(listsProvider).value ?? const <TaskList>[];
     final byId = {for (final l in lists) l.id: l};
 
-    if (view != ViewKind.all) {
+    if (view != ViewKind.all || searching) {
       return ListView.separated(
         padding: const EdgeInsets.only(bottom: 120),
         itemCount: list.length,
@@ -247,26 +279,83 @@ class _TaskListBody extends ConsumerWidget {
       );
     }
 
-    // 「全部」视图：按时间分组，每条只进第一个匹配的组。
+    // 「全部」：按时间分组（每条只进第一个匹配的组），组内可拖拽排序。
     final bounds = DayBounds();
     final groups = <String, List<Task>>{for (final b in _bucketOrder) b: []};
     for (final t in list) {
       groups[_bucketOf(t, bounds)]!.add(t);
     }
-    final children = <Widget>[];
+    final rows = <Object>[];
     for (final b in _bucketOrder) {
       final items = groups[b]!;
       if (items.isEmpty) continue;
-      children.add(_sectionHeader(context, '$b（${items.length}）'));
-      for (final t in items) {
-        children.add(_tile(context, byId, t));
-        children.add(const Divider(height: 1));
-      }
+      rows.add(_GroupHeader(b, items.length));
+      rows.addAll(items);
     }
-    return ListView(
+
+    return ReorderableListView.builder(
+      buildDefaultDragHandles: false,
       padding: const EdgeInsets.only(bottom: 120),
-      children: children,
+      itemCount: rows.length,
+      onReorderItem: (oldIndex, newIndex) =>
+          _onReorder(ref, rows, bounds, oldIndex, newIndex),
+      itemBuilder: (context, index) {
+        final row = rows[index];
+        if (row is _GroupHeader) {
+          return KeyedSubtree(
+            key: ValueKey('h-${row.group}'),
+            child: _sectionHeader(context, '${row.group}（${row.count}）'),
+          );
+        }
+        final task = row as Task;
+        return ReorderableDragStartListener(
+          key: ValueKey('t-${task.id}'),
+          index: index,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _tile(context, byId, task),
+              const Divider(height: 1),
+            ],
+          ),
+        );
+      },
     );
+  }
+
+  /// 组内排序：跨组一律拒绝（列表会自动回弹）。
+  void _onReorder(
+    WidgetRef ref,
+    List<Object> rows,
+    DayBounds bounds,
+    int oldIndex,
+    int newIndex,
+  ) {
+    final moved = rows[oldIndex];
+    if (moved is! Task) return;
+    final group = _bucketOf(moved, bounds);
+
+    final without = [...rows]..removeAt(oldIndex);
+    final prev = newIndex - 1 >= 0 ? without[newIndex - 1] : null;
+    final next = newIndex < without.length ? without[newIndex] : null;
+
+    bool sameGroup(Object? o) =>
+        o is Task && _bucketOf(o, bounds) == group;
+
+    final prevOk = prev == null ||
+        sameGroup(prev) ||
+        (prev is _GroupHeader && prev.group == group);
+    // 落到别的分组头之前 = 跨组；只有"列表最顶部且是本组头"才放行。
+    final nextOk = next == null ||
+        sameGroup(next) ||
+        (next is _GroupHeader && next.group == group && newIndex == 0);
+    if (!prevOk || !nextOk) return;
+
+    ref.read(taskRepositoryProvider).reorderWithinGroup(
+          movedId: moved.id,
+          beforeId: prev is Task ? prev.id : null,
+          afterId: next is Task ? next.id : null,
+        );
   }
 
   Widget _tile(BuildContext context, Map<String, TaskList> byId, Task task) {
@@ -274,7 +363,8 @@ class _TaskListBody extends ConsumerWidget {
     return TaskTile(
       task: task,
       listName: list?.name ?? '生活',
-      listColorValue: listColor(task.listId, list?.color, context.colors.primary),
+      listColorValue:
+          listColor(task.listId, list?.color, context.colors.primary),
     );
   }
 

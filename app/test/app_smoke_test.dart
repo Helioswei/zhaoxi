@@ -22,6 +22,11 @@ class _NoDbRemindOffset extends RemindOffsetNotifier {
   int build() => 0;
 }
 
+class _NoDbFontScale extends FontScaleNotifier {
+  @override
+  String build() => 'normal';
+}
+
 /// 纯 UI 冒烟测试：用 provider 覆盖喂数据，不触碰真实数据库
 /// （Drift 的真实异步在 widget test 的 fake-async 下不会按时完成）。
 Widget _app({
@@ -37,6 +42,7 @@ Widget _app({
       themeModeProvider.overrideWith(_NoDbThemeMode.new),
       viewConfigProvider.overrideWith(_NoDbViewConfig.new),
       remindOffsetProvider.overrideWith(_NoDbRemindOffset.new),
+      fontScaleProvider.overrideWith(_NoDbFontScale.new),
     ],
     child: const ZhaoxiApp(),
   );

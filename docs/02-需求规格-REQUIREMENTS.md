@@ -112,7 +112,7 @@
    - 今天：`due_at ASC, sort_order ASC`
    - 明天/本周/本月/以后：`due_at ASC, sort_order ASC`
    - 待定：`created_at DESC`
-   - 全部：按分组（逾期→今天→明天→本周→本月→以后→待定），组内 `due_at ASC, sort_order ASC`
+   - 全部：按分组（逾期→今天→明天→本周→本月→以后→待定）；**组内按 `sort_order`（手工顺序，可拖拽）**
    - 已完成：`completed_at DESC`，默认加载最近 500 条 + "加载更多"
 
 #### 2.2.1 视图管理（US-028，P1 / M4）

@@ -44,6 +44,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget build(BuildContext context) {
     final offset = ref.watch(remindOffsetProvider);
     final mode = ref.watch(themeModeProvider);
+    final fontScale = ref.watch(fontScaleProvider);
     final colors = context.colors;
 
     return Scaffold(
@@ -70,6 +71,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     selected: mode == m,
                     onSelected: (_) =>
                         ref.read(themeModeProvider.notifier).select(m),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 8,
+              children: [
+                for (final s in const ['normal', 'large'])
+                  ChoiceChip(
+                    label: Text(s == 'large' ? '大字号' : '标准字号'),
+                    selected: fontScale == s,
+                    onSelected: (_) =>
+                        ref.read(fontScaleProvider.notifier).select(s),
                   ),
               ],
             ),
