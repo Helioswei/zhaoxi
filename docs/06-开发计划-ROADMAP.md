@@ -147,7 +147,7 @@ M0 ──┬── M1（提醒）──┐
 
 ## 四、开工前待办清单
 
-- [x] **App 名字：朝夕**（包名 `com.helios.zhaoxi`）
+- [x] **App 名字：朝夕**（包名 `com.helioswei.zhaoxi`）
 - [x] **色值已定稿并实测达标**（03 §6.1）
 - [ ] 确认 Xcode + CocoaPods 就绪（macOS 构建必需）
 - [ ] 确认 Android 真机可连 adb

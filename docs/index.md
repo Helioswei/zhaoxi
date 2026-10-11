@@ -25,7 +25,7 @@
 
 | 维度 | 决策 |
 |---|---|
-| **名称** | **朝夕**（包名 `com.helios.zhaoxi`） |
+| **名称** | **朝夕**（包名 `com.helioswei.zhaoxi`） |
 | 用户 | 作者 + 家人，两人各自独立使用 |
 | 平台 | Android（主）+ macOS 桌面 |
 | 框架 | Flutter（与 yijing-app 同栈） |
