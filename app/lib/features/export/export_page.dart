@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../data/db/database.dart';
 import '../../domain/export_options.dart';
 import '../../providers/app_providers.dart';
+import '../../services/backup_service.dart';
 import '../../services/export_service.dart';
 import '../../services/file_delivery.dart';
 import '../../services/import_service.dart';
@@ -28,11 +30,43 @@ class _ExportPageState extends ConsumerState<ExportPage> {
   ExportOptions _options = const ExportOptions();
   ExportBundle? _preview;
   bool _busy = false;
+  List<File> _backups = const [];
 
   @override
   void initState() {
     super.initState();
     _refreshPreview();
+    _refreshBackups();
+  }
+
+  Future<void> _refreshBackups() async {
+    try {
+      final files = await ref.read(backupServiceProvider).listBackups();
+      if (!mounted) return;
+      setState(() => _backups = files);
+    } catch (_) {
+      // 列不出来就不显示，不阻塞
+    }
+  }
+
+  String _backupSummary() {
+    if (_backups.isEmpty) return '还没有备份';
+    final when = DateFormat('yyyy-MM-dd HH:mm')
+        .format(_backups.first.statSync().modified);
+    return '共 ${_backups.length} 份，最近一次 $when';
+  }
+
+  Future<void> _backupNow() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(backupServiceProvider).backupNow();
+      await _refreshBackups();
+      if (mounted) showInfoSnack(context, '已备份');
+    } catch (e) {
+      if (mounted) showInfoSnack(context, '备份失败：$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _refreshPreview() async {
@@ -317,6 +351,25 @@ class _ExportPageState extends ConsumerState<ExportPage> {
                   ),
                 ),
               ],
+            ),
+          ),
+          const Divider(height: 40),
+          _section('自动备份'),
+          ListTile(
+            leading: const Icon(Icons.backup_outlined),
+            title: const Text('本机自动备份'),
+            subtitle: Text(_backupSummary()),
+            trailing: TextButton(
+              onPressed: _busy ? null : _backupNow,
+              child: const Text('立即备份'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              '每天首次打开自动备份一份全量 JSON，保留最近 ${BackupService.keep} 份；'
+              '备份存在应用私有目录，想取走请用上面的「导出 / 备份」。',
+              style: TextStyle(fontSize: 12, color: context.colors.onSurfaceVariant),
             ),
           ),
         ],

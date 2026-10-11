@@ -16,6 +16,7 @@ class SettingsKeys {
   static const viewOrder = 'view_order';
   static const viewHidden = 'view_hidden';
   static const viewLabels = 'view_labels';
+  static const lastBackupDate = 'last_backup_date';
 }
 
 @DriftAccessor(tables: [SettingsEntries])

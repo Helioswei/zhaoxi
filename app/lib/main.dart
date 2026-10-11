@@ -6,6 +6,8 @@ import 'data/db/database.dart';
 import 'data/repo/task_repository.dart';
 import 'features/task_edit/task_edit_sheet.dart';
 import 'providers/app_providers.dart';
+import 'services/backup_service.dart';
+import 'services/export_service.dart';
 import 'services/notification_service.dart';
 
 Future<void> main() async {
@@ -20,6 +22,13 @@ Future<void> main() async {
 
   // 启动时重排全部未来提醒（应对重启 / 时区变化）。
   await TaskRepository(db, notifications).rescheduleAll();
+
+  // 每天首次启动自动备份一份全量 JSON（失败不阻塞启动）。
+  try {
+    await BackupService(db, ExportService(db)).runIfNeeded();
+  } catch (_) {
+    // 备份失败不影响使用，用户仍可手动导出
+  }
 
   notifications.onTaskTapped = (taskId) => _openTask(db, taskId);
 

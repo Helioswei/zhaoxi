@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../domain/repeat_rule.dart';
 import '../../domain/task_filter.dart';
 import '../../services/reminder_scheduler.dart';
 import '../dao/settings_dao.dart';
@@ -38,6 +39,7 @@ class TaskRepository {
     int? dueAt,
     bool dueHasTime = false,
     int? remindAt,
+    String? repeatRule,
   }) async {
     final now = _nowMs();
     final device = await ensureDeviceId();
@@ -51,6 +53,7 @@ class TaskRepository {
         dueAt: Value(dueAt),
         dueHasTime: Value(dueHasTime),
         remindAt: Value(remindAt),
+        repeatRule: Value(repeatRule),
         sortOrder: Value(now.toDouble()),
         createdAt: now,
         updatedAt: now,
@@ -69,6 +72,7 @@ class TaskRepository {
     int? dueAt,
     bool dueHasTime = false,
     int? remindAt,
+    String? repeatRule,
   }) async {
     await _db.taskDao.patch(
       id,
@@ -79,14 +83,26 @@ class TaskRepository {
         dueAt: Value(dueAt),
         dueHasTime: Value(dueHasTime),
         remindAt: Value(remindAt),
+        repeatRule: Value(repeatRule),
         updatedAt: Value(_nowMs()),
       ),
     );
     await _syncReminder(await _db.taskDao.findById(id));
   }
 
+  /// 完成 / 取消完成。
+  ///
+  /// 重复任务：**原地推进**——`dueAt` 跳到下一个未来点、`completedCount+1`、
+  /// `status` 保持 0（不进已完成列表），并重排通知（见 02 §2.4.2 / 05 §九）。
   Future<void> setCompleted(Task task, bool done) async {
     final now = _nowMs();
+    final rule = RepeatRule.decode(task.repeatRule);
+
+    if (done && rule != null && task.dueAt != null) {
+      await _advanceRepeat(task, rule, now);
+      return;
+    }
+
     await _db.taskDao.patch(
       task.id,
       done
@@ -102,6 +118,69 @@ class TaskRepository {
             ),
     );
     await _syncReminder(await _db.taskDao.findById(task.id));
+  }
+
+  Future<void> _advanceRepeat(Task task, RepeatRule rule, int now) async {
+    final dueAt = task.dueAt!;
+    final current = DateTime.fromMillisecondsSinceEpoch(dueAt);
+    final next = rule.advance(current, DateTime.now());
+    final nextMs = next.millisecondsSinceEpoch;
+
+    final reachedCount =
+        rule.count != null && task.completedCount + 1 >= rule.count!;
+    final pastUntil = rule.until != null && nextMs > rule.until!;
+
+    if (reachedCount || pastUntil) {
+      // 系列结束 → 正常完成，清掉重复规则。
+      await _db.taskDao.patch(
+        task.id,
+        TasksCompanion(
+          status: const Value(1),
+          completedAt: Value(now),
+          completedCount: Value(task.completedCount + 1),
+          repeatRule: const Value<String?>(null),
+          updatedAt: Value(now),
+        ),
+      );
+      await _syncReminder(await _db.taskDao.findById(task.id));
+      return;
+    }
+
+    // 保留原有的"提醒相对截止"的提前量。
+    int? nextRemind;
+    if (task.remindAt != null) {
+      nextRemind = nextMs - (dueAt - task.remindAt!);
+    }
+
+    await _db.taskDao.patch(
+      task.id,
+      TasksCompanion(
+        dueAt: Value(nextMs),
+        remindAt: Value(nextRemind),
+        completedCount: Value(task.completedCount + 1),
+        completedAt: Value(now),
+        status: const Value(0),
+        updatedAt: Value(now),
+      ),
+    );
+    await _syncReminder(await _db.taskDao.findById(task.id));
+  }
+
+  /// 撤销一次"重复任务完成"：把 [before] 里的字段原样写回。
+  Future<void> restoreRepeatCompletion(Task before) async {
+    await _db.taskDao.patch(
+      before.id,
+      TasksCompanion(
+        dueAt: Value(before.dueAt),
+        remindAt: Value(before.remindAt),
+        completedCount: Value(before.completedCount),
+        completedAt: Value(before.completedAt),
+        repeatRule: Value(before.repeatRule),
+        status: Value(before.status),
+        updatedAt: Value(_nowMs()),
+      ),
+    );
+    await _syncReminder(await _db.taskDao.findById(before.id));
   }
 
   Future<void> softDelete(String id) async {

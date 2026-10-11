@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/dao/list_dao.dart';
 import '../../data/db/database.dart';
 import '../../domain/day_boundary.dart';
+import '../../domain/repeat_rule.dart';
 import '../../domain/speech_text.dart';
 import '../../providers/app_providers.dart';
 import '../../services/notification_service.dart';
@@ -42,6 +43,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
   bool _noteOpen = false;
   bool _saving = false;
   String _baseText = '';
+  RepeatRule? _repeat;
 
   bool get _isEditing => widget.task != null;
 
@@ -55,6 +57,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     _dueAt = t?.dueAt;
     _dueHasTime = t?.dueHasTime ?? false;
     _noteOpen = (t?.note ?? '').isNotEmpty;
+    _repeat = RepeatRule.decode(t?.repeatRule);
 
     // 默认提前量取自设置；编辑已有任务时按它实际存的提醒反推。
     _offsetMinutes = ref.read(remindOffsetProvider);
@@ -187,6 +190,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
         dueAt: _dueAt,
         dueHasTime: _dueHasTime,
         remindAt: remindAt,
+        repeatRule: _repeat?.encode(),
       );
     } else {
       await repo.createTask(
@@ -196,6 +200,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
         dueAt: _dueAt,
         dueHasTime: _dueHasTime,
         remindAt: remindAt,
+        repeatRule: _repeat?.encode(),
       );
       await listRepo.rememberLastUsedList(_listId);
       if (!mounted) return;
@@ -341,6 +346,28 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
                   color: context.colors.onSurfaceVariant,
                 ),
               ),
+              const SizedBox(height: 12),
+              _sectionLabel('重复'),
+              Wrap(
+                spacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: const Text('不重复'),
+                    selected: _repeat == null,
+                    onSelected: (_) => setState(() => _repeat = null),
+                  ),
+                  _repeatChip('每天', () => RepeatRule.daily()),
+                  _repeatChip(
+                    '每周',
+                    () => RepeatRule.weekly(
+                      _dueAt == null
+                          ? DateTime.now()
+                          : DateTime.fromMillisecondsSinceEpoch(_dueAt!),
+                    ),
+                  ),
+                  _repeatChip('每月', () => RepeatRule.monthly()),
+                ],
+              ),
               const SizedBox(height: 8),
               GestureDetector(
                 onTap: () => setState(() => _noteOpen = !_noteOpen),
@@ -394,6 +421,22 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _repeatChip(String label, RepeatRule Function() build) {
+    final rule = build();
+    return ChoiceChip(
+      label: Text(label),
+      selected: _repeat?.freq == rule.freq,
+      onSelected: (_) => setState(() {
+        _repeat = rule;
+        // 重复任务需要时间；没设就默认今天。
+        if (_dueAt == null) {
+          _dueAt = planDateOnly(DayBounds().todayStart).dueAt;
+          _dueHasTime = false;
+        }
+      }),
     );
   }
 

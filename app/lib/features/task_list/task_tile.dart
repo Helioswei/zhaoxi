@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/db/database.dart';
+import '../../domain/repeat_rule.dart';
 import '../../providers/app_providers.dart';
 import '../../ui/due_label.dart';
 import '../../ui/snack.dart';
@@ -25,6 +26,7 @@ class TaskTile extends ConsumerWidget {
     final done = task.status == 1;
     final label = dueLabel(task);
     final colors = context.colors;
+    final repeat = RepeatRule.decode(task.repeatRule);
 
     return Dismissible(
       key: ValueKey('task-${task.id}'),
@@ -53,13 +55,23 @@ class TaskTile extends ConsumerWidget {
                   iconSize: 26,
                   onPressed: () async {
                     final repo = ref.read(taskRepositoryProvider);
+                    final isRepeat = repeat != null;
                     await repo.setCompleted(task, !done);
                     if (!context.mounted) return;
-                    showUndoSnack(
-                      context,
-                      done ? '已标记为未完成' : '已完成 ✓',
-                      () => repo.setCompleted(task, done),
-                    );
+                    if (isRepeat && !done) {
+                      // 重复任务：原地推进，撤销就是回写旧值。
+                      showUndoSnack(
+                        context,
+                        '已完成，已排到下一次 ↻',
+                        () => repo.restoreRepeatCompletion(task),
+                      );
+                    } else {
+                      showUndoSnack(
+                        context,
+                        done ? '已标记为未完成' : '已完成 ✓',
+                        () => repo.setCompleted(task, done),
+                      );
+                    }
                   },
                   icon: Icon(
                     done ? Icons.check_circle : Icons.radio_button_unchecked,
@@ -108,6 +120,14 @@ class TaskTile extends ConsumerWidget {
                             label.overdue ? FontWeight.w600 : FontWeight.w400,
                       ),
                     ),
+                    if (repeat != null)
+                      Text(
+                        '↻ ${repeat.freq.label}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
                     const SizedBox(height: 2),
                     Row(
                       mainAxisSize: MainAxisSize.min,

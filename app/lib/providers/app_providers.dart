@@ -12,6 +12,7 @@ import '../domain/view_kind.dart';
 import '../services/reminder_scheduler.dart';
 import '../services/export_service.dart';
 import '../services/import_service.dart';
+import '../services/backup_service.dart';
 
 /// 数据库实例。main() 里会在 `ProviderScope.overrides` 注入已初始化的实例。
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -116,6 +117,13 @@ final exportServiceProvider = Provider<ExportService>(
 
 final importServiceProvider = Provider<ImportService>(
   (ref) => ImportService(ref.watch(databaseProvider)),
+);
+
+final backupServiceProvider = Provider<BackupService>(
+  (ref) => BackupService(
+    ref.watch(databaseProvider),
+    ref.watch(exportServiceProvider),
+  ),
 );
 
 // --------------------------------------------------------------- 外观 / 视图
