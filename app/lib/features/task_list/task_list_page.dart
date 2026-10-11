@@ -20,6 +20,13 @@ class TaskListPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('朝夕'),
+        actions: [
+          IconButton(
+            tooltip: '设置',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).pushNamed('/settings'),
+          ),
+        ],
       ),
       body: Column(
         children: [

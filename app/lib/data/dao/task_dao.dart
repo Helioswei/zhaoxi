@@ -86,6 +86,17 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
   Future<void> upsert(TasksCompanion task) =>
       into(tasks).insertOnConflictUpdate(task);
 
+  /// 启动时用于重排：所有尚未完成、且提醒时间在未来的任务。
+  Future<List<Task>> futureReminders(int nowMs) {
+    return (select(tasks)
+          ..where((t) =>
+              t.deleted.equals(false) &
+              t.status.equals(0) &
+              t.remindAt.isNotNull() &
+              t.remindAt.isBiggerThanValue(nowMs)))
+        .get();
+  }
+
   Future<void> patch(String id, TasksCompanion task) =>
       (update(tasks)..where((t) => t.id.equals(id))).write(task);
 

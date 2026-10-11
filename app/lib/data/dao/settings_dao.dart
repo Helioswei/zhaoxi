@@ -11,6 +11,8 @@ class SettingsKeys {
   static const notifIdCounter = 'notif_id_counter';
   static const themeMode = 'theme_mode';
   static const lastUsedList = 'last_used_list';
+  static const defaultRemindOffset = 'default_remind_offset';
+  static const dateOnlyRemindTime = 'date_only_remind_time';
 }
 
 @DriftAccessor(tables: [SettingsEntries])

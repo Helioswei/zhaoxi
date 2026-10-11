@@ -2,15 +2,18 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/task_filter.dart';
+import '../../services/reminder_scheduler.dart';
 import '../dao/settings_dao.dart';
 import '../db/database.dart';
 
-/// 任务的读写入口。所有业务规则（时间戳、软删、ID 生成）都集中在这里。
+/// 任务的读写入口。所有业务规则（时间戳、软删、ID 生成、提醒排程）都集中在这里。
 class TaskRepository {
-  TaskRepository(this._db);
+  TaskRepository(this._db, [this._scheduler = const NoopReminderScheduler()]);
 
   final AppDatabase _db;
+  final ReminderScheduler _scheduler;
   static const _uuid = Uuid();
+  static int _nowMs() => DateTime.now().millisecondsSinceEpoch;
 
   Stream<List<Task>> watch(TaskFilter filter) => _db.taskDao.watch(filter);
 
@@ -36,11 +39,12 @@ class TaskRepository {
     bool dueHasTime = false,
     int? remindAt,
   }) async {
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = _nowMs();
     final device = await ensureDeviceId();
+    final id = _uuid.v4();
     await _db.taskDao.upsert(
       TasksCompanion.insert(
-        id: _uuid.v4(),
+        id: id,
         title: title,
         listId: listId,
         note: Value(note),
@@ -53,6 +57,7 @@ class TaskRepository {
         originDevice: device,
       ),
     );
+    await _syncReminder(await _db.taskDao.findById(id));
   }
 
   Future<void> updateTask({
@@ -64,7 +69,6 @@ class TaskRepository {
     bool dueHasTime = false,
     int? remindAt,
   }) async {
-    final now = DateTime.now().millisecondsSinceEpoch;
     await _db.taskDao.patch(
       id,
       TasksCompanion(
@@ -74,13 +78,14 @@ class TaskRepository {
         dueAt: Value(dueAt),
         dueHasTime: Value(dueHasTime),
         remindAt: Value(remindAt),
-        updatedAt: Value(now),
+        updatedAt: Value(_nowMs()),
       ),
     );
+    await _syncReminder(await _db.taskDao.findById(id));
   }
 
   Future<void> setCompleted(Task task, bool done) async {
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = _nowMs();
     await _db.taskDao.patch(
       task.id,
       done
@@ -95,21 +100,70 @@ class TaskRepository {
               updatedAt: Value(now),
             ),
     );
+    await _syncReminder(await _db.taskDao.findById(task.id));
   }
 
   Future<void> softDelete(String id) async {
-    final now = DateTime.now().millisecondsSinceEpoch;
     await _db.taskDao.patch(
       id,
-      TasksCompanion(deleted: const Value(true), updatedAt: Value(now)),
+      TasksCompanion(deleted: const Value(true), updatedAt: Value(_nowMs())),
     );
+    await _syncReminder(await _db.taskDao.findById(id));
   }
 
   Future<void> restore(String id) async {
-    final now = DateTime.now().millisecondsSinceEpoch;
     await _db.taskDao.patch(
       id,
-      TasksCompanion(deleted: const Value(false), updatedAt: Value(now)),
+      TasksCompanion(deleted: const Value(false), updatedAt: Value(_nowMs())),
     );
+    await _syncReminder(await _db.taskDao.findById(id));
+  }
+
+  /// 启动时重排全部未来提醒（应对重启/时区变化）。
+  Future<void> rescheduleAll() async {
+    final tasks = await _db.taskDao.futureReminders(_nowMs());
+    for (final t in tasks) {
+      await _syncReminder(t);
+    }
+  }
+
+  /// 取消旧通知 → 未完成且提醒时间在未来 → 排新通知。
+  Future<void> _syncReminder(Task? task) async {
+    if (task == null) return;
+    if (task.notifId != null) {
+      await _scheduler.cancel(task.notifId!);
+    }
+    if (task.status != 0 || task.deleted) return;
+    final remindAt = task.remindAt;
+    if (remindAt == null) return;
+    if (remindAt <= _nowMs()) return; // 已过则不排（见 02 §2.3.2）
+
+    var notifId = task.notifId;
+    if (notifId == null) {
+      notifId = await _allocateNotifId();
+      await _db.taskDao.patch(
+        task.id,
+        TasksCompanion(
+          notifId: Value(notifId),
+          updatedAt: Value(_nowMs()),
+        ),
+      );
+    }
+    await _scheduler.schedule(
+      notifId,
+      task.title,
+      DateTime.fromMillisecondsSinceEpoch(remindAt),
+      task.id,
+    );
+  }
+
+  /// 通知 ID 用自增整数（Android ID 是 32 位 int，UUID 哈希会碰撞）。
+  Future<int> _allocateNotifId() async {
+    final current = int.tryParse(
+          await _db.settingsDao.get(SettingsKeys.notifIdCounter) ?? '',
+        ) ??
+        1;
+    await _db.settingsDao.set(SettingsKeys.notifIdCounter, '${current + 1}');
+    return current;
   }
 }

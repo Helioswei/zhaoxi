@@ -5,6 +5,7 @@ import '../../data/dao/list_dao.dart';
 import '../../data/db/database.dart';
 import '../../domain/day_boundary.dart';
 import '../../providers/app_providers.dart';
+import '../../services/notification_service.dart';
 import '../../ui/snack.dart';
 import '../../ui/theme/app_theme.dart';
 
@@ -35,7 +36,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
   late String _listId;
   int? _dueAt;
   bool _dueHasTime = false;
-  int? _remindAt;
+  late int _offsetMinutes;
   bool _noteOpen = false;
   bool _saving = false;
 
@@ -47,13 +48,19 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     final t = widget.task;
     _title = TextEditingController(text: t?.title ?? '');
     _note = TextEditingController(text: t?.note ?? '');
-    _listId = t?.listId ??
-        ref.read(selectedListIdProvider) ??
-        kFallbackListId;
+    _listId = t?.listId ?? ref.read(selectedListIdProvider) ?? kFallbackListId;
     _dueAt = t?.dueAt;
     _dueHasTime = t?.dueHasTime ?? false;
-    _remindAt = t?.remindAt;
     _noteOpen = (t?.note ?? '').isNotEmpty;
+
+    // 默认提前量取自设置；编辑已有任务时按它实际存的提醒反推。
+    _offsetMinutes = ref.read(remindOffsetProvider);
+    if (t?.dueAt != null && t?.remindAt != null) {
+      final inferred = ((_baseRemindAt(t!.dueAt!, t.dueHasTime) - t.remindAt!) /
+              60000)
+          .round();
+      if (inferred >= 0) _offsetMinutes = inferred;
+    }
   }
 
   @override
@@ -63,12 +70,21 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     super.dispose();
   }
 
+  static int _baseRemindAt(int dueAt, bool dueHasTime) => dueHasTime
+      ? dueAt
+      : planDateOnly(DateTime.fromMillisecondsSinceEpoch(dueAt)).remindAt;
+
+  /// 实际写入的提醒时间：日期型以当天 09:00 为基准，再减去提前量。
+  int? get _remindAt {
+    final dueAt = _dueAt;
+    if (dueAt == null) return null;
+    return _baseRemindAt(dueAt, _dueHasTime) - _offsetMinutes * 60000;
+  }
+
   void _applyDate(DateTime day) {
-    final plan = planDateOnly(day);
     setState(() {
-      _dueAt = plan.dueAt;
+      _dueAt = planDateOnly(day).dueAt;
       _dueHasTime = false;
-      _remindAt = plan.remindAt;
     });
   }
 
@@ -76,7 +92,6 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     setState(() {
       _dueAt = null;
       _dueHasTime = false;
-      _remindAt = null;
     });
   }
 
@@ -93,20 +108,19 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
   }
 
   Future<void> _pickTime() async {
-    if (_dueAt == null) return;
-    final due = DateTime.fromMillisecondsSinceEpoch(_dueAt!);
+    final dueAt = _dueAt;
+    if (dueAt == null) return;
+    final due = DateTime.fromMillisecondsSinceEpoch(dueAt);
     final picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(hour: due.hour, minute: due.minute),
       helpText: '选择时间',
     );
     if (picked == null) return;
-    final withTime =
-        DateTime(due.year, due.month, due.day, picked.hour, picked.minute);
     setState(() {
-      _dueAt = withTime.millisecondsSinceEpoch;
+      _dueAt = DateTime(due.year, due.month, due.day, picked.hour, picked.minute)
+          .millisecondsSinceEpoch;
       _dueHasTime = true;
-      _remindAt = _dueAt;
     });
   }
 
@@ -117,6 +131,13 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
       return;
     }
     setState(() => _saving = true);
+
+    final remindAt = _remindAt;
+    if (remindAt != null) {
+      // 首次设置提醒时再申请权限（而不是一启动就弹）。
+      await NotificationService.instance.requestPermissions();
+    }
+
     final repo = ref.read(taskRepositoryProvider);
     final listRepo = ref.read(listRepositoryProvider);
     final note = _note.text.trim();
@@ -130,7 +151,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
         note: noteOrNull,
         dueAt: _dueAt,
         dueHasTime: _dueHasTime,
-        remindAt: _remindAt,
+        remindAt: remindAt,
       );
     } else {
       await repo.createTask(
@@ -139,7 +160,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
         note: noteOrNull,
         dueAt: _dueAt,
         dueHasTime: _dueHasTime,
-        remindAt: _remindAt,
+        remindAt: remindAt,
       );
       await listRepo.rememberLastUsedList(_listId);
       if (!mounted) return;
@@ -162,8 +183,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final listsAsync = ref.watch(listsProvider);
-    final lists = listsAsync.value ?? const <TaskList>[];
+    final lists = ref.watch(listsProvider).value ?? const <TaskList>[];
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Padding(
@@ -240,11 +260,8 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
                   _quickDateChip('今天', 0),
                   _quickDateChip('明天', 1),
                   _quickDateChip('后天', 2),
-                  _quickDateChip('下周', 7, fromWeekStart: true),
-                  ActionChip(
-                    label: const Text('选…'),
-                    onPressed: _pickDate,
-                  ),
+                  _quickDateChip('下周', 0, fromWeekStart: true),
+                  ActionChip(label: const Text('选…'), onPressed: _pickDate),
                   ActionChip(
                     label: const Text('不设时间'),
                     onPressed: _clearDate,
@@ -252,6 +269,30 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
                 ],
               ),
               const SizedBox(height: 8),
+              if (_dueAt != null) ...[
+                _sectionLabel('提醒'),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final m in const [0, 5, 15, 30])
+                      ChoiceChip(
+                        label: Text(m == 0 ? '准时' : '提前 $m 分'),
+                        selected: _offsetMinutes == m,
+                        onSelected: (_) =>
+                            setState(() => _offsetMinutes = m),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _pickTime,
+                    icon: const Icon(Icons.schedule, size: 18),
+                    label: Text(_dueHasTime ? '改具体时间' : '加一个具体时间'),
+                  ),
+                ),
+              ],
               Text(
                 _dueSummary(),
                 style: const TextStyle(
@@ -259,15 +300,6 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
                   color: AppColors.textSecondary,
                 ),
               ),
-              if (_dueAt != null)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _pickTime,
-                    icon: const Icon(Icons.schedule, size: 18),
-                    label: Text(_dueHasTime ? '改时间' : '加一个具体时间'),
-                  ),
-                ),
               const SizedBox(height: 8),
               GestureDetector(
                 onTap: () => setState(() => _noteOpen = !_noteOpen),
@@ -341,12 +373,11 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     final bounds = DayBounds();
     final base = fromWeekStart ? bounds.weekStart : bounds.todayStart;
     final day = DateTime(base.year, base.month, base.day + offsetDays);
+    final dayMs = DateTime(day.year, day.month, day.day).millisecondsSinceEpoch;
     final selected = !_dueHasTime &&
         _dueAt != null &&
-        DayBounds(
-          DateTime.fromMillisecondsSinceEpoch(_dueAt!),
-        ).todayStartMs ==
-            DateTime(day.year, day.month, day.day).millisecondsSinceEpoch;
+        DayBounds(DateTime.fromMillisecondsSinceEpoch(_dueAt!)).todayStartMs ==
+            dayMs;
     return ChoiceChip(
       label: Text(label),
       selected: selected,
@@ -355,13 +386,19 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
   }
 
   String _dueSummary() {
-    if (_dueAt == null) return '未设置时间 → 会存到「待定」';
-    final due = DateTime.fromMillisecondsSinceEpoch(_dueAt!);
+    final dueAt = _dueAt;
+    if (dueAt == null) return '未设置时间 → 会存到「待定」';
+    final due = DateTime.fromMillisecondsSinceEpoch(dueAt);
     final date = '${due.year}-${due.month.toString().padLeft(2, '0')}-'
         '${due.day.toString().padLeft(2, '0')}';
-    if (!_dueHasTime) return '$date（全天，默认 09:00 提醒）';
-    final hm = '${due.hour.toString().padLeft(2, '0')}:'
-        '${due.minute.toString().padLeft(2, '0')}';
-    return '$date $hm';
+    final remindAt = _remindAt;
+    final remind = remindAt == null
+        ? ''
+        : '，提醒 ${_hm(DateTime.fromMillisecondsSinceEpoch(remindAt))}';
+    if (!_dueHasTime) return '$date（全天$remind）';
+    return '$date ${_hm(due)}$remind';
   }
+
+  static String _hm(DateTime t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 }
