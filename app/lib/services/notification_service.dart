@@ -146,6 +146,9 @@ class NotificationService implements ReminderScheduler {
   @override
   Future<void> cancel(int id) => _plugin.cancel(id: id);
 
+  /// 覆盖导入/清空数据前：取消本机全部已排程通知（避免幽灵通知）。
+  Future<void> cancelAll() => _plugin.cancelAll();
+
   /// 应用由通知冷启动时，取出对应的 taskId。
   Future<String?> launchTaskId() async {
     final details = await _plugin.getNotificationAppLaunchDetails();

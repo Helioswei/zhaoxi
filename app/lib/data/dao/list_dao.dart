@@ -28,8 +28,16 @@ class ListDao extends DatabaseAccessor<AppDatabase> with _$ListDaoMixin {
   Future<List<TaskList>> getAll() =>
       (select(taskLists)..where((l) => l.deleted.equals(false))).get();
 
+  Future<TaskList?> getById(String id) =>
+      (select(taskLists)..where((l) => l.id.equals(id))).getSingleOrNull();
+
   Future<void> upsert(TaskListsCompanion list) =>
       into(taskLists).insertOnConflictUpdate(list);
+
+  /// 全量备份用：包含软删除的行。
+  Future<List<TaskList>> allForBackup() => select(taskLists).get();
+
+  Future<void> deleteAllLists() => delete(taskLists).go();
 
   /// 首启补齐内置清单。**只补缺失的**，不覆盖用户改过的名字/颜色。
   Future<void> ensureBuiltins() async {

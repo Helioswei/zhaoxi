@@ -112,7 +112,7 @@ todo-app/
 │   │   └── l10n/
 │   ├── android/
 │   ├── macos/
-│   ├── assets/fonts/              # SourceHanSerifCN（PDF 用）+ OFL.txt（必须随包）
+│   ├── assets/fonts/              # ZhaoxiSerif-Regular.ttf（思源宋体 TrueType 子集）+ OFL.txt（必须随包）
 │   └── test/                      # 单测：重复规则、时区边界、导入导出往返
 └── README.md
 ```
@@ -259,7 +259,7 @@ SpeechService（状态机：idle / listening / error）
 
 - **视图管理**：`view_order` / `view_hidden` / `view_labels` 存 `settings`，由 `task_list` 读取；锁定 `all` / `done`（见 05 §四）。
 - **清单**：内置 `list-work` / `list-life` 固定 id（见 05 §三）；`list_dao` 管理；首页清单筛选叠加在视图查询之上。
-- **字体许可**：PDF 用的 SourceHanSerifCN 采用 **SIL OFL-1.1**，需随包附带许可证文本，并在「关于 → 开源许可」中列出。
+- **字体许可**：PDF 用的思源宋体子集 `ZhaoxiSerif-Regular.ttf` 采用 **SIL OFL-1.1**，随包附带 `OFL.txt`，并在「关于 → 开源许可」中列出。字体由 `tool/build_pdf_font.py` 生成（完整 OTF → 字符子集 → TrueType，因为 `pdf` 包只支持 glyf 轮廓）。
 
 ### 9.1 版本号要分两个
 

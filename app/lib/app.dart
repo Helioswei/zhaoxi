@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'features/export/export_page.dart';
 import 'features/settings/settings_page.dart';
 import 'features/task_list/task_list_page.dart';
 import 'ui/theme/app_theme.dart';
@@ -19,6 +20,7 @@ class ZhaoxiApp extends StatelessWidget {
       theme: buildAppTheme(),
       routes: {
         SettingsPage.routeName: (_) => const SettingsPage(),
+        ExportPage.routeName: (_) => const ExportPage(),
       },
       home: const TaskListPage(),
     );

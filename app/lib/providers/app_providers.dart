@@ -8,6 +8,8 @@ import '../domain/day_boundary.dart';
 import '../domain/task_filter.dart';
 import '../domain/view_kind.dart';
 import '../services/reminder_scheduler.dart';
+import '../services/export_service.dart';
+import '../services/import_service.dart';
 
 /// 数据库实例。main() 里会在 `ProviderScope.overrides` 注入已初始化的实例。
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -101,3 +103,11 @@ class RemindOffsetNotifier extends Notifier<int> {
 
 final remindOffsetProvider =
     NotifierProvider<RemindOffsetNotifier, int>(RemindOffsetNotifier.new);
+
+final exportServiceProvider = Provider<ExportService>(
+  (ref) => ExportService(ref.watch(databaseProvider)),
+);
+
+final importServiceProvider = Provider<ImportService>(
+  (ref) => ImportService(ref.watch(databaseProvider)),
+);

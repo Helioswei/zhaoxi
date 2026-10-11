@@ -86,6 +86,35 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
   Future<void> upsert(TasksCompanion task) =>
       into(tasks).insertOnConflictUpdate(task);
 
+  /// 全量备份：包含软删除的行（保持软删状态）。
+  Future<List<Task>> allForBackup() => select(tasks).get();
+
+  /// 区间内已完成（按 completedAt）。
+  Future<List<Task>> completedBetween(int from, int to) {
+    return (select(tasks)
+          ..where((t) =>
+              t.deleted.equals(false) &
+              t.status.equals(1) &
+              t.completedAt.isNotNull() &
+              t.completedAt.isBiggerOrEqualValue(from) &
+              t.completedAt.isSmallerThanValue(to)))
+        .get();
+  }
+
+  /// 区间内未完成（按 dueAt）。
+  Future<List<Task>> openDueBetween(int from, int to) {
+    return (select(tasks)
+          ..where((t) =>
+              t.deleted.equals(false) &
+              t.status.equals(0) &
+              t.dueAt.isNotNull() &
+              t.dueAt.isBiggerOrEqualValue(from) &
+              t.dueAt.isSmallerThanValue(to)))
+        .get();
+  }
+
+  Future<void> deleteAllTasks() => delete(tasks).go();
+
   /// 启动时用于重排：所有尚未完成、且提醒时间在未来的任务。
   Future<List<Task>> futureReminders(int nowMs) {
     return (select(tasks)

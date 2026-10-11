@@ -92,16 +92,18 @@
 
 ### M3 · 导出与备份
 
-| # | 任务 | 需求 ID | 优先级 |
-|---|---|---|---|
-| 3.0 | **导出面板：范围(本周/本月/上周/上月/自定义) × 清单 × 内容 × 分组** | US-027 | P0 |
-| 3.1 | JSON 导出（全量，`exportFormatVersion`，**不含 deviceId**） | US-014 | P0 |
-| 3.2 | JSON 导入（版本校验 + 格式升级路径 + 合并/覆盖，**不覆盖 device_id/视图配置**） | US-016 | P0 |
-| 3.3 | Markdown 导出（**按周分节 + 未完成章节**，Obsidian 兼容） | US-015/027 | P0 |
-| 3.4 | PDF 导出（打包思源宋体，同一套排版） | US-013/027 | P0 |
-| 3.5 | **落盘：`share_plus` / `file_picker` 系统面板** | US-013~016 | P0 |
-| 3.6 | 自动备份 + macOS security-scoped bookmark | US-017 | P1 |
-| 3.7 | 设置页"数据"分组全部入口 | — | P0 |
+| # | 任务 | 需求 ID | 优先级 | 状态 |
+|---|---|---|---|---|
+| 3.0 | **导出面板：范围(本周/本月/上周/上月/自定义) × 清单 × 内容 × 分组 + 「月报」预设** | US-027 | P0 | ✅ |
+| 3.1 | JSON 导出（全量，`exportFormatVersion`，**不含 deviceId**） | US-014 | P0 | ✅ |
+| 3.2 | JSON 导入（版本校验 + 合并/覆盖，**不覆盖 device_id/视图配置**） | US-016 | P0 | ✅ |
+| 3.3 | Markdown 导出（**按周分节 + 未完成章节**，Obsidian 兼容） | US-015/027 | P0 | ✅ |
+| 3.4 | PDF 导出（TrueType 中文字体子集，同一套排版） | US-013/027 | P0 | ✅ |
+| 3.5 | **落盘：`share_plus`（分享）/ `file_picker`（另存为）** | US-013~016 | P0 | ✅ |
+| 3.6 | 自动备份 + macOS security-scoped bookmark | US-017 | P1 | ⏳ 留到 M4（P1；需目录授权与保留策略） |
+| 3.7 | 设置页“数据”分组全部入口 | — | P0 | ✅ |
+
+> **M3 实现注记**：`services/export_service.dart`（范围/清单/分组 + Markdown/PDF/JSON）、`services/import_service.dart`（校验/合并/覆盖）、`services/file_delivery.dart`（系统面板）；PDF 用 `assets/fonts/ZhaoxiSerif-Regular.ttf`（思源宋体 TrueType 子集，由 `tool/build_pdf_font.py` 生成，SIL OFL-1.1）；单测 `test/export_import_test.dart`（11 例）。
 
 **完成定义**：三种格式都能通过系统面板保存/分享并正常打开、中文不乱码；导出→导入往返数据一致；**「月报」预设**能一键导出可直接粘贴的月报。
 

@@ -88,6 +88,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ),
           const Divider(),
+          _section('数据'),
+          ListTile(
+            leading: const Icon(Icons.ios_share),
+            title: const Text('导出 / 备份'),
+            subtitle: const Text('导出月报（Markdown/PDF）或全量备份（JSON），也可导入恢复'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).pushNamed('/export'),
+          ),
+          const Divider(),
           _section('关于'),
           const ListTile(
             title: Text('版本'),
@@ -96,6 +105,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const ListTile(
             title: Text('数据'),
             subtitle: Text('任务数据只在这台设备上，不会上传'),
+          ),
+          const ListTile(
+            title: Text('开源许可'),
+            subtitle: Text('MIT（代码） / SIL OFL-1.1（思源宋体子集）'),
           ),
         ],
       ),
