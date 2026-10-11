@@ -5,8 +5,14 @@ import 'package:zhaoxi/app.dart';
 import 'package:zhaoxi/data/db/database.dart';
 import 'package:zhaoxi/domain/view_config.dart';
 import 'package:zhaoxi/providers/app_providers.dart';
+import 'package:zhaoxi/ui/theme/app_style.dart';
+import 'package:zhaoxi/ui/widgets/app_pill.dart';
 
 /// 测试用：跳过从数据库读设置。
+class _NoDbStyle extends StyleNotifier {
+  @override
+  AppStyleId build() => AppStyleId.fresh;
+}
 class _NoDbThemeMode extends ThemeModeNotifier {
   @override
   ThemeMode build() => ThemeMode.light;
@@ -43,6 +49,7 @@ Widget _app({
       viewConfigProvider.overrideWith(_NoDbViewConfig.new),
       remindOffsetProvider.overrideWith(_NoDbRemindOffset.new),
       fontScaleProvider.overrideWith(_NoDbFontScale.new),
+      styleProvider.overrideWith(_NoDbStyle.new),
     ],
     child: const ZhaoxiApp(),
   );
@@ -55,10 +62,10 @@ void main() {
 
     expect(find.text('朝夕'), findsOneWidget);
     for (final label in ['待定', '今天', '明天', '本周', '本月', '以后', '全部', '已完成']) {
-      expect(find.widgetWithText(ChoiceChip, label), findsWidgets,
+      expect(find.widgetWithText(AppPill, label), findsWidgets,
           reason: '缺少视图标签：$label');
     }
-    expect(find.text('今天没有安排 🎉'), findsOneWidget);
+    expect(find.text('今天没有安排'), findsOneWidget);
   });
 
   testWidgets('清单筛选栏渲染内置清单', (tester) async {
@@ -77,8 +84,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // “工作”只在清单筛选栏出现；“全部”两栏都有（清单筛选 + 视图栏）
-    expect(find.widgetWithText(ChoiceChip, '工作'), findsOneWidget);
-    expect(find.widgetWithText(ChoiceChip, '全部'), findsWidgets);
+    expect(find.widgetWithText(AppPill, '工作'), findsOneWidget);
+    expect(find.widgetWithText(AppPill, '全部'), findsWidgets);
   });
 
   testWidgets('「待定」汇总提示：点击后切到待定视图并隐藏横幅', (tester) async {
@@ -91,7 +98,7 @@ void main() {
 
     // 切走后横幅不再出现（它只在「今天」显示）
     expect(find.text('还有 2 件没定时间'), findsNothing);
-    expect(find.text('都安排好了 👌'), findsOneWidget);
+    expect(find.text('都安排好了'), findsOneWidget);
   });
 
   testWidgets('点 ＋ 打开新建弹层', (tester) async {

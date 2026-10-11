@@ -19,13 +19,14 @@ class ZhaoxiApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
     final fontScale = ref.watch(fontScaleProvider);
+    final style = ref.watch(styleProvider);
 
     return MaterialApp(
       title: '朝夕',
       navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(Brightness.light),
-      darkTheme: buildAppTheme(Brightness.dark),
+      theme: buildAppTheme(style: style, brightness: Brightness.light),
+      darkTheme: buildAppTheme(style: style, brightness: Brightness.dark),
       themeMode: mode,
       // 字号：在系统缩放基础上再乘一个系数（大字号无障碍）。
       builder: (context, child) {

@@ -82,6 +82,12 @@ flutter:
     - assets/fonts/ZhaoxiSerif-Regular.ttf
     - assets/fonts/OFL.txt
 
+  fonts:
+    # 「纸感」风格用的衬线字体（与 PDF 同一份子集）
+    - family: ZhaoxiSerif
+      fonts:
+        - asset: assets/fonts/ZhaoxiSerif-Regular.ttf
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

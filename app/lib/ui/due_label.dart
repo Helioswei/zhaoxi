@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../data/db/database.dart';
 import '../domain/day_boundary.dart';
+import 'theme/app_style.dart';
 
 final _hm = DateFormat('HH:mm');
 final _md = DateFormat('M月d日');
@@ -39,9 +40,9 @@ DueLabel dueLabel(Task task, [DateTime? at]) {
   return DueLabel(text, overdue: isOverdue);
 }
 
-Color dueLabelColor(ColorScheme scheme, DueLabel label) {
-  if (label.text == '待定') return scheme.onSurfaceVariant;
-  if (label.overdue) return scheme.error;
-  if (label.text.startsWith('今天')) return scheme.primary;
-  return scheme.onSurfaceVariant;
+Color dueLabelColor(AppTokens t, DueLabel label) {
+  if (label.text == '待定') return t.textSecondary;
+  if (label.overdue) return t.danger;
+  if (label.text.startsWith('今天')) return t.accent;
+  return t.textSecondary;
 }

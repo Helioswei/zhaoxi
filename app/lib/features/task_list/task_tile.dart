@@ -7,6 +7,7 @@ import '../../providers/app_providers.dart';
 import '../../ui/due_label.dart';
 import '../../ui/snack.dart';
 import '../../ui/theme/app_theme.dart';
+import '../../ui/widgets/app_pill.dart';
 import '../task_edit/task_edit_sheet.dart';
 
 class TaskTile extends ConsumerWidget {
@@ -23,136 +24,148 @@ class TaskTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.tokens;
     final done = task.status == 1;
     final label = dueLabel(task);
-    final colors = context.colors;
     final repeat = RepeatRule.decode(task.repeatRule);
+    final labelColor = dueLabelColor(context.tokens, label);
 
-    return Dismissible(
-      key: ValueKey('task-${task.id}'),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        color: colors.error,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: const Icon(Icons.delete_outline, color: Colors.white),
-      ),
-      onDismissed: (_) {
-        final repo = ref.read(taskRepositoryProvider);
-        repo.softDelete(task.id);
-        showUndoSnack(context, '已删除', () => repo.restore(task.id));
-      },
-      child: Material(
-        color: colors.surface,
-        child: InkWell(
-          onTap: () => openTaskEditSheet(context, task: task),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 6, 16, 6),
-            child: Row(
-              children: [
-                IconButton(
-                  tooltip: done ? '标记为未完成' : '完成',
-                  iconSize: 26,
-                  onPressed: () async {
-                    final repo = ref.read(taskRepositoryProvider);
-                    final isRepeat = repeat != null;
-                    await repo.setCompleted(task, !done);
-                    if (!context.mounted) return;
-                    if (isRepeat && !done) {
-                      // 重复任务：原地推进，撤销就是回写旧值。
-                      showUndoSnack(
-                        context,
-                        '已完成，已排到下一次 ↻',
-                        () => repo.restoreRepeatCompletion(task),
-                      );
-                    } else {
-                      showUndoSnack(
-                        context,
-                        done ? '已标记为未完成' : '已完成 ✓',
-                        () => repo.setCompleted(task, done),
-                      );
-                    }
-                  },
-                  icon: Icon(
-                    done ? Icons.check_circle : Icons.radio_button_unchecked,
-                    color: done ? colors.onSurfaceVariant : colors.primary,
+    Future<void> toggle() async {
+      final repo = ref.read(taskRepositoryProvider);
+      await repo.setCompleted(task, !done);
+      if (!context.mounted) return;
+      if (repeat != null && !done) {
+        showUndoSnack(
+          context,
+          '已完成，已排到下一次 ↻',
+          () => repo.restoreRepeatCompletion(task),
+        );
+      } else {
+        showUndoSnack(
+          context,
+          done ? '已标记为未完成' : '已完成 ✓',
+          () => repo.setCompleted(task, done),
+        );
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      child: Dismissible(
+        key: ValueKey('task-${task.id}'),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          decoration: BoxDecoration(
+            color: t.danger,
+            borderRadius: BorderRadius.circular(t.cardRadius),
+          ),
+          child: const Icon(Icons.delete_outline, color: Colors.white),
+        ),
+        onDismissed: (_) {
+          final repo = ref.read(taskRepositoryProvider);
+          repo.softDelete(task.id);
+          showUndoSnack(context, '已删除', () => repo.restore(task.id));
+        },
+        child: Card(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(t.cardRadius),
+            onTap: () => openTaskEditSheet(context, task: task),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 10, 14, 10),
+              child: Row(
+                children: [
+                  IconButton(
+                    tooltip: done ? '标记为未完成' : '完成',
+                    iconSize: 26,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: toggle,
+                    icon: Icon(
+                      done ? Icons.check_circle : Icons.radio_button_unchecked,
+                      color: done ? t.textSecondary : t.primary,
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        task.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: done ? colors.onSurfaceVariant : colors.onSurface,
-                          decoration: done ? TextDecoration.lineThrough : null,
-                        ),
-                      ),
-                      if ((task.note ?? '').isNotEmpty)
+                  const SizedBox(width: 2),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         Text(
-                          task.note!,
+                          task.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 13,
-                            color: colors.onSurfaceVariant,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                            color: done ? t.textSecondary : t.textPrimary,
+                            decoration:
+                                done ? TextDecoration.lineThrough : null,
+                            decorationColor: t.textSecondary,
                           ),
                         ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label.text,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: dueLabelColor(colors, label),
-                        fontWeight:
-                            label.overdue ? FontWeight.w600 : FontWeight.w400,
-                      ),
-                    ),
-                    if (repeat != null)
-                      Text(
-                        '↻ ${repeat.freq.label}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    const SizedBox(height: 2),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: listColorValue,
-                            shape: BoxShape.circle,
+                        if ((task.note ?? '').isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              task.note!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: t.textSecondary,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          listName,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
                       ],
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AppBadge(label.text, color: labelColor),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (repeat != null) ...[
+                            Text(
+                              '↻ ${repeat.freq.label}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: t.textSecondary,
+                              ),
+                            ),
+                            if (listName.isNotEmpty)
+                              Text(' · ',
+                                  style: TextStyle(
+                                      fontSize: 11, color: t.textSecondary)),
+                          ],
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: listColorValue,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            listName,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: t.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

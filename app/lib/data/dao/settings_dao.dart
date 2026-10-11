@@ -18,6 +18,7 @@ class SettingsKeys {
   static const viewLabels = 'view_labels';
   static const lastBackupDate = 'last_backup_date';
   static const fontScale = 'font_scale';
+  static const style = 'app_style';
 }
 
 @DriftAccessor(tables: [SettingsEntries])

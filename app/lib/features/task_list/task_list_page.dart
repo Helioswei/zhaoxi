@@ -7,6 +7,7 @@ import '../../domain/day_boundary.dart';
 import '../../domain/view_kind.dart';
 import '../../providers/app_providers.dart';
 import '../../ui/theme/app_theme.dart';
+import '../../ui/widgets/app_pill.dart';
 import '../quick_voice/quick_voice_button.dart';
 import '../task_edit/task_edit_sheet.dart';
 import 'task_tile.dart';
@@ -152,18 +153,16 @@ class _ListFilterBar extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         children: [
-          _chip(
-            context,
+          AppPill(
             label: '全部',
             selected: selected == null,
             onTap: () => ref.read(selectedListIdProvider.notifier).select(null),
           ),
           for (final l in lists)
-            _chip(
-              context,
+            AppPill(
               label: l.name,
               selected: selected == l.id,
-              color: listColor(l.id, l.color, context.colors.primary),
+              dotColor: listColor(l.id, l.color, context.tokens.primary),
               onTap: () =>
                   ref.read(selectedListIdProvider.notifier).select(l.id),
             ),
@@ -188,14 +187,12 @@ class _ViewBar extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         children: [
           for (final v in config.visible)
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: ChoiceChip(
-                label: Text(config.labelOf(v)),
-                selected: selected == v,
-                onSelected: (_) =>
-                    ref.read(selectedViewProvider.notifier).select(v),
-              ),
+            AppPill(
+              dense: true,
+              label: config.labelOf(v),
+              selected: selected == v,
+              onTap: () =>
+                  ref.read(selectedViewProvider.notifier).select(v),
             ),
         ],
       ),
@@ -271,10 +268,9 @@ class _TaskListBody extends ConsumerWidget {
     final byId = {for (final l in lists) l.id: l};
 
     if (view != ViewKind.all || searching) {
-      return ListView.separated(
-        padding: const EdgeInsets.only(bottom: 120),
+      return ListView.builder(
+        padding: const EdgeInsets.only(top: 4, bottom: 120),
         itemCount: list.length,
-        separatorBuilder: (_, _) => const Divider(height: 1),
         itemBuilder: (_, i) => _tile(context, byId, list[i]),
       );
     }
@@ -311,13 +307,7 @@ class _TaskListBody extends ConsumerWidget {
         return ReorderableDragStartListener(
           key: ValueKey('t-${task.id}'),
           index: index,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _tile(context, byId, task),
-              const Divider(height: 1),
-            ],
-          ),
+          child: _tile(context, byId, task),
         );
       },
     );
@@ -368,34 +358,36 @@ class _TaskListBody extends ConsumerWidget {
     );
   }
 
-  Widget _sectionHeader(BuildContext context, String text) => Container(
-        width: double.infinity,
-        color: context.appBackground,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+  Widget _sectionHeader(BuildContext context, String text) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
         child: Text(
           text,
           style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: context.colors.onSurfaceVariant,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.6,
+            color: context.tokens.textSecondary,
           ),
         ),
       );
 
   Widget _emptyState(BuildContext context, bool searching) {
-    final text = searching
-        ? '没找到匹配的任务'
-        : switch (view) {
-            ViewKind.today => '今天没有安排 🎉',
-            ViewKind.undated => '都安排好了 👌',
-            _ => '这里还没有内容',
-          };
-    return Center(
-      child: Text(
-        text,
-        style: TextStyle(fontSize: 16, color: context.colors.onSurfaceVariant),
-      ),
-    );
+    if (searching) {
+      return const AppEmptyState(emoji: '🔍', text: '没找到匹配的任务');
+    }
+    return switch (view) {
+      ViewKind.today => const AppEmptyState(
+          emoji: '🍵',
+          text: '今天没有安排',
+          hint: '要不要记一件小事？',
+        ),
+      ViewKind.undated => const AppEmptyState(
+          emoji: '👌',
+          text: '都安排好了',
+          hint: '所有任务都有时间了',
+        ),
+      _ => const AppEmptyState(emoji: '🗒️', text: '这里还没有内容'),
+    };
   }
 
   String _bucketOf(Task t, DayBounds b) {
@@ -410,32 +402,4 @@ class _TaskListBody extends ConsumerWidget {
   }
 }
 
-Widget _chip(
-  BuildContext context, {
-  required String label,
-  required bool selected,
-  required VoidCallback onTap,
-  Color? color,
-}) {
-  return Padding(
-    padding: const EdgeInsets.only(right: 8, top: 6, bottom: 6),
-    child: ChoiceChip(
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (color != null) ...[
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 6),
-          ],
-          Text(label),
-        ],
-      ),
-      selected: selected,
-      onSelected: (_) => onTap(),
-    ),
-  );
-}
+

@@ -13,6 +13,7 @@ import '../services/reminder_scheduler.dart';
 import '../services/export_service.dart';
 import '../services/import_service.dart';
 import '../services/backup_service.dart';
+import '../ui/theme/app_style.dart';
 
 /// 数据库实例。main() 里会在 `ProviderScope.overrides` 注入已初始化的实例。
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -270,3 +271,34 @@ class FontScaleNotifier extends Notifier<String> {
 
 final fontScaleProvider =
     NotifierProvider<FontScaleNotifier, String>(FontScaleNotifier.new);
+
+/// 视觉风格：清爽 / 温润 / 纸感（可实时切换对比）。
+class StyleNotifier extends Notifier<AppStyleId> {
+  @override
+  AppStyleId build() {
+    _load();
+    return AppStyleId.fresh;
+  }
+
+  Future<void> _load() async {
+    try {
+      final raw =
+          await ref.read(databaseProvider).settingsDao.get(SettingsKeys.style);
+      final style = AppStyleId.fromId(raw);
+      if (style != state) state = style;
+    } catch (_) {
+      // 用默认
+    }
+  }
+
+  Future<void> select(AppStyleId style) async {
+    state = style;
+    await ref
+        .read(databaseProvider)
+        .settingsDao
+        .set(SettingsKeys.style, style.id);
+  }
+}
+
+final styleProvider =
+    NotifierProvider<StyleNotifier, AppStyleId>(StyleNotifier.new);

@@ -45,6 +45,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final offset = ref.watch(remindOffsetProvider);
     final mode = ref.watch(themeModeProvider);
     final fontScale = ref.watch(fontScaleProvider);
+    final style = ref.watch(styleProvider);
     final colors = context.colors;
 
     return Scaffold(
@@ -73,6 +74,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ref.read(themeModeProvider.notifier).select(m),
                   ),
               ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 8,
+              children: [
+                for (final s in AppStyleId.values)
+                  ChoiceChip(
+                    label: Text(s.label),
+                    selected: style == s,
+                    onSelected: (_) =>
+                        ref.read(styleProvider.notifier).select(s),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text(
+              '风格：${style.description}（可随时切换对比）',
+              style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
             ),
           ),
           const SizedBox(height: 12),
