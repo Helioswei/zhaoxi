@@ -31,6 +31,7 @@ app/macos/Flutter/ephemeral/
 
 # Android 构建产物
 app/android/.gradle/
+app/android/.kotlin/
 app/android/local.properties
 app/android/key.properties
 *.jks
