@@ -13,6 +13,9 @@ class SettingsKeys {
   static const lastUsedList = 'last_used_list';
   static const defaultRemindOffset = 'default_remind_offset';
   static const dateOnlyRemindTime = 'date_only_remind_time';
+  static const viewOrder = 'view_order';
+  static const viewHidden = 'view_hidden';
+  static const viewLabels = 'view_labels';
 }
 
 @DriftAccessor(tables: [SettingsEntries])

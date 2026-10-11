@@ -3,7 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zhaoxi/app.dart';
 import 'package:zhaoxi/data/db/database.dart';
+import 'package:zhaoxi/domain/view_config.dart';
 import 'package:zhaoxi/providers/app_providers.dart';
+
+/// 测试用：跳过从数据库读设置。
+class _NoDbThemeMode extends ThemeModeNotifier {
+  @override
+  ThemeMode build() => ThemeMode.light;
+}
+
+class _NoDbViewConfig extends ViewConfigNotifier {
+  @override
+  ViewConfig build() => ViewConfig.defaults();
+}
+
+class _NoDbRemindOffset extends RemindOffsetNotifier {
+  @override
+  int build() => 0;
+}
 
 /// 纯 UI 冒烟测试：用 provider 覆盖喂数据，不触碰真实数据库
 /// （Drift 的真实异步在 widget test 的 fake-async 下不会按时完成）。
@@ -17,6 +34,9 @@ Widget _app({
       taskListProvider.overrideWith((ref) => Stream.value(tasks)),
       listsProvider.overrideWith((ref) => Stream.value(lists)),
       undatedCountProvider.overrideWith((ref) => Stream.value(undated)),
+      themeModeProvider.overrideWith(_NoDbThemeMode.new),
+      viewConfigProvider.overrideWith(_NoDbViewConfig.new),
+      remindOffsetProvider.overrideWith(_NoDbRemindOffset.new),
     ],
     child: const ZhaoxiApp(),
   );

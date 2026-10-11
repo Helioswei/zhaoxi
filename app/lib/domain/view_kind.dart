@@ -28,4 +28,7 @@ enum ViewKind {
 
   /// 不可隐藏的两个"安全网"视图。
   bool get isLocked => this == all || this == done;
+
+  /// 可隐藏（非锁定项）。
+  bool get canHide => !isLocked;
 }

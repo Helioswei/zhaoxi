@@ -24,12 +24,13 @@ class TaskTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final done = task.status == 1;
     final label = dueLabel(task);
+    final colors = context.colors;
 
     return Dismissible(
       key: ValueKey('task-${task.id}'),
       direction: DismissDirection.endToStart,
       background: Container(
-        color: AppColors.danger,
+        color: colors.error,
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         child: const Icon(Icons.delete_outline, color: Colors.white),
@@ -40,7 +41,7 @@ class TaskTile extends ConsumerWidget {
         showUndoSnack(context, '已删除', () => repo.restore(task.id));
       },
       child: Material(
-        color: AppColors.card,
+        color: colors.surface,
         child: InkWell(
           onTap: () => openTaskEditSheet(context, task: task),
           child: Padding(
@@ -62,7 +63,7 @@ class TaskTile extends ConsumerWidget {
                   },
                   icon: Icon(
                     done ? Icons.check_circle : Icons.radio_button_unchecked,
-                    color: done ? AppColors.textSecondary : AppColors.primary,
+                    color: done ? colors.onSurfaceVariant : colors.primary,
                   ),
                 ),
                 Expanded(
@@ -76,11 +77,8 @@ class TaskTile extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 18,
-                          color: done
-                              ? AppColors.textSecondary
-                              : AppColors.textPrimary,
-                          decoration:
-                              done ? TextDecoration.lineThrough : null,
+                          color: done ? colors.onSurfaceVariant : colors.onSurface,
+                          decoration: done ? TextDecoration.lineThrough : null,
                         ),
                       ),
                       if ((task.note ?? '').isNotEmpty)
@@ -88,9 +86,9 @@ class TaskTile extends ConsumerWidget {
                           task.note!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: AppColors.textSecondary,
+                            color: colors.onSurfaceVariant,
                           ),
                         ),
                     ],
@@ -105,7 +103,7 @@ class TaskTile extends ConsumerWidget {
                       label.text,
                       style: TextStyle(
                         fontSize: 13,
-                        color: dueLabelColor(label),
+                        color: dueLabelColor(colors, label),
                         fontWeight:
                             label.overdue ? FontWeight.w600 : FontWeight.w400,
                       ),
@@ -125,9 +123,9 @@ class TaskTile extends ConsumerWidget {
                         const SizedBox(width: 4),
                         Text(
                           listName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.textSecondary,
+                            color: colors.onSurfaceVariant,
                           ),
                         ),
                       ],

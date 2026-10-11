@@ -10,11 +10,33 @@ import '../quick_voice/quick_voice_button.dart';
 import '../task_edit/task_edit_sheet.dart';
 import 'task_tile.dart';
 
-class TaskListPage extends ConsumerWidget {
+class TaskListPage extends ConsumerStatefulWidget {
   const TaskListPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TaskListPage> createState() => _TaskListPageState();
+}
+
+class _TaskListPageState extends ConsumerState<TaskListPage> {
+  bool _searchOpen = false;
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _toggleSearch() {
+    setState(() => _searchOpen = !_searchOpen);
+    if (!_searchOpen) {
+      _searchController.clear();
+      ref.read(searchQueryProvider.notifier).clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final view = ref.watch(selectedViewProvider);
     final tasksAsync = ref.watch(taskListProvider);
 
@@ -22,6 +44,11 @@ class TaskListPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('朝夕'),
         actions: [
+          IconButton(
+            tooltip: _searchOpen ? '关闭搜索' : '搜索',
+            icon: Icon(_searchOpen ? Icons.close : Icons.search),
+            onPressed: _toggleSearch,
+          ),
           IconButton(
             tooltip: '设置',
             icon: const Icon(Icons.settings_outlined),
@@ -33,7 +60,8 @@ class TaskListPage extends ConsumerWidget {
         children: [
           const _ListFilterBar(),
           const _ViewBar(),
-          if (view == ViewKind.today) const _UndatedBanner(),
+          if (_searchOpen) _searchField(),
+          if (view == ViewKind.today && !_searchOpen) const _UndatedBanner(),
           const Divider(height: 1),
           Expanded(
             child: tasksAsync.when(
@@ -53,10 +81,34 @@ class TaskListPage extends ConsumerWidget {
           FloatingActionButton(
             heroTag: 'add',
             tooltip: '新建任务',
+            shape: const CircleBorder(),
+            backgroundColor: context.colors.primary,
+            foregroundColor: Colors.white,
             onPressed: () => openTaskEditSheet(context),
             child: const Icon(Icons.add),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _searchField() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: TextField(
+        controller: _searchController,
+        autofocus: true,
+        decoration: InputDecoration(
+          hintText: '搜索标题或备注…',
+          prefixIcon: const Icon(Icons.search),
+          filled: true,
+          fillColor: context.colors.surface,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        onChanged: (v) => ref.read(searchQueryProvider.notifier).update(v),
       ),
     );
   }
@@ -77,15 +129,17 @@ class _ListFilterBar extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         children: [
           _chip(
+            context,
             label: '全部',
             selected: selected == null,
             onTap: () => ref.read(selectedListIdProvider.notifier).select(null),
           ),
           for (final l in lists)
             _chip(
+              context,
               label: l.name,
               selected: selected == l.id,
-              color: listColor(l.id, l.color),
+              color: listColor(l.id, l.color, context.colors.primary),
               onTap: () =>
                   ref.read(selectedListIdProvider.notifier).select(l.id),
             ),
@@ -101,17 +155,19 @@ class _ViewBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedViewProvider);
+    final config = ref.watch(viewConfigProvider);
+
     return SizedBox(
       height: 44,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         children: [
-          for (final v in ViewKind.defaultOrder)
+          for (final v in config.visible)
             Padding(
               padding: const EdgeInsets.only(right: 4),
               child: ChoiceChip(
-                label: Text(v.label),
+                label: Text(config.labelOf(v)),
                 selected: selected == v,
                 onSelected: (_) =>
                     ref.read(selectedViewProvider.notifier).select(v),
@@ -131,24 +187,22 @@ class _UndatedBanner extends ConsumerWidget {
     final count = ref.watch(undatedCountProvider).value ?? 0;
     if (count == 0) return const SizedBox.shrink();
     return InkWell(
-      onTap: () => ref.read(selectedViewProvider.notifier).select(ViewKind.undated),
+      onTap: () =>
+          ref.read(selectedViewProvider.notifier).select(ViewKind.undated),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         child: Row(
           children: [
-            const Icon(Icons.info_outline,
-                size: 18, color: AppColors.textSecondary),
+            Icon(Icons.info_outline,
+                size: 18, color: context.colors.onSurfaceVariant),
             const SizedBox(width: 6),
             Text(
               '还有 $count 件没定时间',
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 14, color: context.colors.onSurfaceVariant),
             ),
             const Spacer(),
-            const Icon(Icons.chevron_right,
-                size: 20, color: AppColors.textSecondary),
+            Icon(Icons.chevron_right,
+                size: 20, color: context.colors.onSurfaceVariant),
           ],
         ),
       ),
@@ -164,9 +218,22 @@ class _TaskListBody extends ConsumerWidget {
 
   static const _bucketOrder = ['逾期', '今天', '明天', '本周', '本月', '以后', '待定'];
 
+  List<Task> _filtered(WidgetRef ref) {
+    final query = ref.watch(searchQueryProvider).trim().toLowerCase();
+    if (query.isEmpty) return tasks;
+    return tasks
+        .where((t) =>
+            t.title.toLowerCase().contains(query) ||
+            (t.note ?? '').toLowerCase().contains(query))
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (tasks.isEmpty) return _emptyState();
+    final list = _filtered(ref);
+    final searching = ref.watch(searchQueryProvider).trim().isNotEmpty;
+
+    if (list.isEmpty) return _emptyState(context, searching);
 
     final lists = ref.watch(listsProvider).value ?? const <TaskList>[];
     final byId = {for (final l in lists) l.id: l};
@@ -174,25 +241,25 @@ class _TaskListBody extends ConsumerWidget {
     if (view != ViewKind.all) {
       return ListView.separated(
         padding: const EdgeInsets.only(bottom: 120),
-        itemCount: tasks.length,
+        itemCount: list.length,
         separatorBuilder: (_, _) => const Divider(height: 1),
-        itemBuilder: (_, i) => _tile(byId, tasks[i]),
+        itemBuilder: (_, i) => _tile(context, byId, list[i]),
       );
     }
 
     // 「全部」视图：按时间分组，每条只进第一个匹配的组。
     final bounds = DayBounds();
     final groups = <String, List<Task>>{for (final b in _bucketOrder) b: []};
-    for (final t in tasks) {
+    for (final t in list) {
       groups[_bucketOf(t, bounds)]!.add(t);
     }
     final children = <Widget>[];
     for (final b in _bucketOrder) {
       final items = groups[b]!;
       if (items.isEmpty) continue;
-      children.add(_sectionHeader('$b（${items.length}）'));
+      children.add(_sectionHeader(context, '$b（${items.length}）'));
       for (final t in items) {
-        children.add(_tile(byId, t));
+        children.add(_tile(context, byId, t));
         children.add(const Divider(height: 1));
       }
     }
@@ -202,39 +269,41 @@ class _TaskListBody extends ConsumerWidget {
     );
   }
 
-  Widget _tile(Map<String, TaskList> byId, Task task) {
+  Widget _tile(BuildContext context, Map<String, TaskList> byId, Task task) {
     final list = byId[task.listId];
     return TaskTile(
       task: task,
       listName: list?.name ?? '生活',
-      listColorValue: listColor(task.listId, list?.color),
+      listColorValue: listColor(task.listId, list?.color, context.colors.primary),
     );
   }
 
-  Widget _sectionHeader(String text) => Container(
+  Widget _sectionHeader(BuildContext context, String text) => Container(
         width: double.infinity,
-        color: AppColors.background,
+        color: context.appBackground,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
         child: Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
+            color: context.colors.onSurfaceVariant,
           ),
         ),
       );
 
-  Widget _emptyState() {
-    final text = switch (view) {
-      ViewKind.today => '今天没有安排 🎉',
-      ViewKind.undated => '都安排好了 👌',
-      _ => '这里还没有内容',
-    };
+  Widget _emptyState(BuildContext context, bool searching) {
+    final text = searching
+        ? '没找到匹配的任务'
+        : switch (view) {
+            ViewKind.today => '今天没有安排 🎉',
+            ViewKind.undated => '都安排好了 👌',
+            _ => '这里还没有内容',
+          };
     return Center(
       child: Text(
         text,
-        style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+        style: TextStyle(fontSize: 16, color: context.colors.onSurfaceVariant),
       ),
     );
   }
@@ -251,7 +320,8 @@ class _TaskListBody extends ConsumerWidget {
   }
 }
 
-Widget _chip({
+Widget _chip(
+  BuildContext context, {
   required String label,
   required bool selected,
   required VoidCallback onTap,

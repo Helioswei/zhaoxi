@@ -26,7 +26,7 @@ class _QuickVoiceButtonState extends ConsumerState<QuickVoiceButton> {
     final desktop = SpeechService.isDesktop;
 
     final button = Material(
-      color: listening ? AppColors.danger : Theme.of(context).colorScheme.primary,
+      color: listening ? context.colors.error : context.colors.primary,
       shape: const CircleBorder(),
       elevation: 4,
       child: InkWell(
@@ -126,7 +126,9 @@ class _ListeningDialog extends StatelessWidget {
                 Icon(
                   svc.isListening ? Icons.mic : Icons.mic_off,
                   size: 36,
-                  color: svc.isListening ? AppColors.danger : AppColors.textSecondary,
+                  color: svc.isListening
+                      ? context.colors.error
+                      : context.colors.onSurfaceVariant,
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -135,16 +137,16 @@ class _ListeningDialog extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     color: words.isEmpty
-                        ? AppColors.textSecondary
-                        : AppColors.textPrimary,
+                        ? context.colors.onSurfaceVariant
+                        : context.colors.onSurface,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   SpeechService.isDesktop ? '说完点一下麦克风' : '松手就会记下',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    color: context.colors.onSurfaceVariant,
                   ),
                 ),
               ],

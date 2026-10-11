@@ -43,19 +43,56 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final offset = ref.watch(remindOffsetProvider);
+    final mode = ref.watch(themeModeProvider);
+    final colors = context.colors;
 
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
         children: [
-          _section('提醒'),
+          _section(context, '外观'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 8,
+              children: [
+                for (final m in const [
+                  ThemeMode.system,
+                  ThemeMode.light,
+                  ThemeMode.dark,
+                ])
+                  ChoiceChip(
+                    label: Text(switch (m) {
+                      ThemeMode.system => '跟随系统',
+                      ThemeMode.light => '浅色',
+                      ThemeMode.dark => '深色',
+                    }),
+                    selected: mode == m,
+                    onSelected: (_) =>
+                        ref.read(themeModeProvider.notifier).select(m),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          ListTile(
+            leading: const Icon(Icons.view_list_outlined),
+            title: const Text('视图管理'),
+            subtitle: const Text('显示 / 排序 / 重命名首页的时间视图'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).pushNamed('/views'),
+          ),
+          const Divider(),
+          _section(context, '提醒'),
           _statusTile(
+            context,
             title: '通知权限',
             ok: _notifEnabled,
             okText: '已开启',
             badText: '未开启 —— 到点不会提醒',
           ),
           _statusTile(
+            context,
             title: '精确提醒',
             ok: _exact,
             okText: '已开启',
@@ -88,7 +125,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ),
           const Divider(),
-          _section('数据'),
+          _section(context, '数据'),
           ListTile(
             leading: const Icon(Icons.ios_share),
             title: const Text('导出 / 备份'),
@@ -97,10 +134,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             onTap: () => Navigator.of(context).pushNamed('/export'),
           ),
           const Divider(),
-          _section('关于'),
+          _section(context, '关于'),
           const ListTile(
             title: Text('版本'),
-            subtitle: Text('0.1.0 · M0/M1'),
+            subtitle: Text('0.1.0 · MVP（M0–M3）'),
           ),
           const ListTile(
             title: Text('数据'),
@@ -110,24 +147,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             title: Text('开源许可'),
             subtitle: Text('MIT（代码） / SIL OFL-1.1（思源宋体子集）'),
           ),
+          const SizedBox(height: 24),
+          Center(
+            child: Text(
+              '朝夕',
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+            ),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _section(String text) => Padding(
+  Widget _section(BuildContext context, String text) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
         child: Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
+            color: context.colors.onSurfaceVariant,
           ),
         ),
       );
 
-  Widget _statusTile({
+  Widget _statusTile(
+    BuildContext context, {
     required String title,
     required bool? ok,
     required String okText,
@@ -139,7 +185,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       subtitle: Text(isOk ? okText : badText),
       trailing: Icon(
         isOk ? Icons.check_circle : Icons.error_outline,
-        color: isOk ? AppColors.primary : AppColors.danger,
+        color: isOk ? context.colors.primary : context.colors.error,
       ),
     );
   }

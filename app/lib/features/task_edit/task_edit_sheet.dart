@@ -15,7 +15,7 @@ Future<void> openTaskEditSheet(BuildContext context, {Task? task}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: AppColors.card,
+    backgroundColor: context.colors.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
@@ -284,7 +284,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
                       final listening = SpeechService.instance.isListening;
                       return IconButton(
                         tooltip: listening ? '停止' : '语音输入',
-                        color: listening ? AppColors.danger : null,
+                        color: listening ? context.colors.error : null,
                         onPressed: _toggleMic,
                         icon: Icon(listening ? Icons.mic : Icons.mic_none),
                       );
@@ -336,9 +336,9 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
               ],
               Text(
                 _dueSummary(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
-                  color: AppColors.textSecondary,
+                  color: context.colors.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 8),
@@ -360,11 +360,11 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
                   controller: _note,
                   maxLines: 4,
                   maxLength: 2000,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: '补充说明（可选）',
                     filled: true,
-                    fillColor: AppColors.background,
-                    border: OutlineInputBorder(),
+                    fillColor: context.appBackground,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
               ],
@@ -383,9 +383,9 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
                   width: double.infinity,
                   child: TextButton(
                     onPressed: _delete,
-                    child: const Text(
+                    child: Text(
                       '删除这条任务',
-                      style: TextStyle(color: AppColors.danger),
+                      style: TextStyle(color: context.colors.error),
                     ),
                   ),
                 ),
@@ -401,10 +401,10 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
+            color: context.colors.onSurfaceVariant,
           ),
         ),
       );

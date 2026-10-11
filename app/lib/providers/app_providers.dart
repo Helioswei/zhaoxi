@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/dao/settings_dao.dart';
@@ -6,6 +7,7 @@ import '../data/repo/list_repository.dart';
 import '../data/repo/task_repository.dart';
 import '../domain/day_boundary.dart';
 import '../domain/task_filter.dart';
+import '../domain/view_config.dart';
 import '../domain/view_kind.dart';
 import '../services/reminder_scheduler.dart';
 import '../services/export_service.dart';
@@ -84,12 +86,16 @@ class RemindOffsetNotifier extends Notifier<int> {
   }
 
   Future<void> _load() async {
-    final raw = await ref
-        .read(databaseProvider)
-        .settingsDao
-        .get(SettingsKeys.defaultRemindOffset);
-    final minutes = int.tryParse(raw ?? '') ?? 0;
-    if (minutes != state) state = minutes;
+    try {
+      final raw = await ref
+          .read(databaseProvider)
+          .settingsDao
+          .get(SettingsKeys.defaultRemindOffset);
+      final minutes = int.tryParse(raw ?? '') ?? 0;
+      if (minutes != state) state = minutes;
+    } catch (_) {
+      // 读不到就用默认
+    }
   }
 
   Future<void> select(int minutes) async {
@@ -111,3 +117,118 @@ final exportServiceProvider = Provider<ExportService>(
 final importServiceProvider = Provider<ImportService>(
   (ref) => ImportService(ref.watch(databaseProvider)),
 );
+
+// --------------------------------------------------------------- 外观 / 视图
+
+/// 主题：跟随系统 / 浅色 / 深色。
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() {
+    _load();
+    return ThemeMode.system;
+  }
+
+  Future<void> _load() async {
+    try {
+      final raw = await ref
+          .read(databaseProvider)
+          .settingsDao
+          .get(SettingsKeys.themeMode);
+      final mode = switch (raw) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      };
+      if (mode != state) state = mode;
+    } catch (_) {
+      // 读不到设置就用默认（例如测试环境）
+    }
+  }
+
+  Future<void> select(ThemeMode mode) async {
+    state = mode;
+    await ref
+        .read(databaseProvider)
+        .settingsDao
+        .set(SettingsKeys.themeMode, mode.name);
+  }
+}
+
+final themeModeProvider =
+    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+
+/// 视图的用户配置（顺序 / 隐藏 / 重命名）。
+class ViewConfigNotifier extends Notifier<ViewConfig> {
+  @override
+  ViewConfig build() {
+    _load();
+    return ViewConfig.defaults();
+  }
+
+  Future<void> _load() async {
+    try {
+      final dao = ref.read(databaseProvider).settingsDao;
+      state = ViewConfig.decode(
+        orderJson: await dao.get(SettingsKeys.viewOrder),
+        hiddenJson: await dao.get(SettingsKeys.viewHidden),
+        labelsJson: await dao.get(SettingsKeys.viewLabels),
+      );
+    } catch (_) {
+      // 读不到就用默认视图配置
+    }
+  }
+
+  Future<void> _persist(ViewConfig config) async {
+    final dao = ref.read(databaseProvider).settingsDao;
+    await dao.set(SettingsKeys.viewOrder, config.encodeOrder());
+    await dao.set(SettingsKeys.viewHidden, config.encodeHidden());
+    await dao.set(SettingsKeys.viewLabels, config.encodeLabels());
+  }
+
+  Future<void> reorder(int oldIndex, int newIndex) async {
+    final order = [...state.order];
+    final item = order.removeAt(oldIndex);
+    order.insert(newIndex, item);
+    final next = state.copyWith(order: order);
+    state = next;
+    await _persist(next);
+  }
+
+  Future<void> setHidden(ViewKind view, bool hidden) async {
+    if (hidden && !view.canHide) return; // 锁定项
+    final set = {...state.hidden};
+    hidden ? set.add(view) : set.remove(view);
+    final next = state.copyWith(hidden: set);
+    state = next;
+    await _persist(next);
+  }
+
+  Future<void> rename(ViewKind view, String? label) async {
+    final labels = {...state.labels};
+    final trimmed = label?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      labels.remove(view);
+    } else {
+      labels[view] = trimmed;
+    }
+    final next = state.copyWith(labels: labels);
+    state = next;
+    await _persist(next);
+  }
+}
+
+final viewConfigProvider =
+    NotifierProvider<ViewConfigNotifier, ViewConfig>(ViewConfigNotifier.new);
+
+/// 列表内搜索关键词（M4）。
+class SearchQueryNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void update(String value) => state = value;
+
+  void clear() => state = '';
+}
+
+final searchQueryProvider =
+    NotifierProvider<SearchQueryNotifier, String>(SearchQueryNotifier.new);

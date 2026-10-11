@@ -179,7 +179,7 @@ class _ExportPageState extends ConsumerState<ExportPage> {
             child: const Text('取消'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            style: FilledButton.styleFrom(backgroundColor: context.colors.error),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('覆盖'),
           ),
@@ -256,7 +256,7 @@ class _ExportPageState extends ConsumerState<ExportPage> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
               _previewText(isJson),
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 13, color: context.colors.onSurfaceVariant),
             ),
           ),
           Padding(
@@ -289,11 +289,11 @@ class _ExportPageState extends ConsumerState<ExportPage> {
           ),
           const Divider(height: 40),
           _section('导入备份（JSON）'),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text(
               '合并：只补本地没有或更旧的记录，安全。\n覆盖：清空后写入，需二次确认。',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 13, color: context.colors.onSurfaceVariant),
             ),
           ),
           Padding(
@@ -310,7 +310,7 @@ class _ExportPageState extends ConsumerState<ExportPage> {
                 Expanded(
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.danger,
+                      foregroundColor: context.colors.error,
                     ),
                     onPressed: _busy ? null : () => _import(overwrite: true),
                     child: const Text('覆盖导入'),
@@ -382,10 +382,10 @@ class _ExportPageState extends ConsumerState<ExportPage> {
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
         child: Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
+            color: context.colors.onSurfaceVariant,
           ),
         ),
       );
@@ -426,12 +426,12 @@ class _DisabledHint extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: context.appBackground,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           text,
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 13, color: context.colors.onSurfaceVariant),
         ),
       ),
     );
