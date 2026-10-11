@@ -150,6 +150,26 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
     });
   }
 
+  /// 删除清单前：把该清单下的任务整体改到另一个清单。
+  Future<void> reassignList(String fromListId, String toListId) async {
+    await (update(tasks)..where((t) => t.listId.equals(fromListId))).write(
+      TasksCompanion(
+        listId: Value(toListId),
+        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      ),
+    );
+  }
+
+  /// 某清单下的任务数（用于删除清单时的提示）。
+  Future<int> countInList(String listId) async {
+    final count = countAll();
+    final row = await (selectOnly(tasks)
+          ..addColumns([count])
+          ..where(tasks.listId.equals(listId) & tasks.deleted.equals(false)))
+        .getSingle();
+    return row.read(count) ?? 0;
+  }
+
   /// 启动时用于重排：所有尚未完成、且提醒时间在未来的任务。
   Future<List<Task>> futureReminders(int nowMs) {
     return (select(tasks)

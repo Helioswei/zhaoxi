@@ -34,6 +34,24 @@ class ListDao extends DatabaseAccessor<AppDatabase> with _$ListDaoMixin {
   Future<void> upsert(TaskListsCompanion list) =>
       into(taskLists).insertOnConflictUpdate(list);
 
+  Future<void> patch(String id, TaskListsCompanion values) =>
+      (update(taskLists)..where((l) => l.id.equals(id))).write(values);
+
+  Future<void> softDelete(String id) => patch(
+        id,
+        TaskListsCompanion(
+          deleted: const Value(true),
+          updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+        ),
+      );
+
+  Future<double> nextSortOrder() async {
+    final row = await (selectOnly(taskLists)
+          ..addColumns([taskLists.sortOrder.max()]))
+        .getSingle();
+    return (row.read(taskLists.sortOrder.max()) ?? 0) + 1;
+  }
+
   /// 全量备份用：包含软删除的行。
   Future<List<TaskList>> allForBackup() => select(taskLists).get();
 

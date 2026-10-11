@@ -95,9 +95,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ListTile(
             leading: const Icon(Icons.view_list_outlined),
             title: const Text('视图管理'),
-            subtitle: const Text('显示 / 排序 / 重命名首页的时间视图'),
+            subtitle: const Text('首页时间视图的显示 / 顺序 / 名称'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).pushNamed('/views'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.folder_outlined),
+            title: const Text('清单管理'),
+            subtitle: const Text('工作 / 生活等清单的名称、颜色、增删'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).pushNamed('/lists'),
           ),
           const Divider(),
           _section(context, '提醒'),
