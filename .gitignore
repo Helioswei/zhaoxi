@@ -1,0 +1,42 @@
+# ============================================================
+# 朝夕 (zhaoxi) — .gitignore
+# ============================================================
+
+# ---- 私有资料：不进本仓库，自带独立 git，无远程 ----
+private/
+
+# ---- macOS ----
+.DS_Store
+**/.DS_Store
+
+# ---- 编辑器 / IDE ----
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# ---- Flutter / Dart ----
+app/.dart_tool/
+app/.packages
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+**/GeneratedPluginRegistrant.*
+
+# iOS / macOS 依赖与临时产物
+app/ios/Pods/
+app/ios/.symlinks/
+app/macos/Pods/
+app/macos/Flutter/ephemeral/
+
+# Android 构建产物
+app/android/.gradle/
+app/android/local.properties
+app/android/key.properties
+*.jks
+*.keystore
+
+# ---- 本地环境 / 密钥 ----
+.env
+.env.*
+!.env.example
