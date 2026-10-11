@@ -74,14 +74,16 @@
 
 ### M2 · 语音输入
 
-| # | 任务 | 需求 ID | 优先级 |
-|---|---|---|---|
-| 2.1 | `SpeechService`（状态机 idle/listening/error） | US-002/026 | P0 |
-| 2.2 | 麦克风权限流程（Android + macOS entitlements） | US-002 | P0 |
-| 2.3 | 编辑页 🎤（点开始/点停） | US-002 | P0 |
-| 2.4 | **首页快捷 🎤（按住说/松手建）** | US-026 | P0 |
-| 2.5 | 失败降级文案（无权限/无引擎/无网/空结果） | US-002 | P0 |
-| 2.6 | Android 真机 + macOS 桌面分别验证 | — | P0 |
+| # | 任务 | 需求 ID | 优先级 | 状态 |
+|---|---|---|---|---|
+| 2.1 | `SpeechService`（状态机 idle/listening/error） | US-002/026 | P0 | ✅ |
+| 2.2 | 麦克风权限流程（Android + macOS entitlements） | US-002 | P0 | ✅（Android manifest + macOS Info.plist/entitlements 已配） |
+| 2.3 | 编辑页 🎤（实时回填标题） | US-002 | P0 | ✅ |
+| 2.4 | **首页快捷 🎤（按住说/松手建；桌面点击开关）** | US-026 | P0 | ✅ |
+| 2.5 | 失败降级文案（无权限/无引擎/无网/空结果） | US-002 | P0 | ✅ |
+| 2.6 | Android 真机 + macOS 桌面分别验证 | — | P0 | ⏳ Android 待真机；macOS 待 Xcode |
+
+> **M2 实现注记**：`services/speech_service.dart`（ChangeNotifier 状态机，只做“说话→文字”）+ `domain/speech_text.dart`（文本合并，可单测）；首页 `features/quick_voice/`，编辑页内联麦克风；单测 `test/speech_text_test.dart`（4 例）。
 
 **完成定义**：安静环境说"买牛奶"，80% 以上一次识别成可用文本（允许改）。
 > 注意：M2 **只做转文字**，不做"明天"这类时间的自然语言解析（那是 US-023 / P2）。测试句不要用带时间的句子，以免误导。

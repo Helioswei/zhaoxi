@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/dao/list_dao.dart';
 import '../../data/db/database.dart';
 import '../../domain/day_boundary.dart';
+import '../../domain/speech_text.dart';
 import '../../providers/app_providers.dart';
 import '../../services/notification_service.dart';
+import '../../services/speech_service.dart';
 import '../../ui/snack.dart';
 import '../../ui/theme/app_theme.dart';
 
@@ -39,6 +41,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
   late int _offsetMinutes;
   bool _noteOpen = false;
   bool _saving = false;
+  String _baseText = '';
 
   bool get _isEditing => widget.task != null;
 
@@ -65,9 +68,41 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
 
   @override
   void dispose() {
+    SpeechService.instance.removeListener(_onSpeech);
     _title.dispose();
     _note.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleMic() async {
+    final svc = SpeechService.instance;
+    if (svc.isListening) {
+      await svc.stop();
+      return;
+    }
+    final error = await svc.start();
+    if (error != null) {
+      if (mounted) showInfoSnack(context, error);
+      return;
+    }
+    _baseText = _title.text;
+    svc.addListener(_onSpeech);
+  }
+
+  /// 识别到的文字实时回填标题；识别结束时解绑。
+  void _onSpeech() {
+    final svc = SpeechService.instance;
+    if (!svc.isListening) {
+      svc.removeListener(_onSpeech);
+      return;
+    }
+    final merged = mergeDictation(_baseText, svc.words);
+    if (merged != _title.text) {
+      _title.value = TextEditingValue(
+        text: merged,
+        selection: TextSelection.collapsed(offset: merged.length),
+      );
+    }
   }
 
   static int _baseRemindAt(int dueAt, bool dueHasTime) => dueHasTime
@@ -243,11 +278,17 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
                       onSubmitted: (_) => _save(),
                     ),
                   ),
-                  IconButton(
-                    tooltip: '语音输入（M2 接入）',
-                    onPressed: () =>
-                        showInfoSnack(context, '语音输入将在 M2 加入'),
-                    icon: const Icon(Icons.mic_none),
+                  AnimatedBuilder(
+                    animation: SpeechService.instance,
+                    builder: (context, _) {
+                      final listening = SpeechService.instance.isListening;
+                      return IconButton(
+                        tooltip: listening ? '停止' : '语音输入',
+                        color: listening ? AppColors.danger : null,
+                        onPressed: _toggleMic,
+                        icon: Icon(listening ? Icons.mic : Icons.mic_none),
+                      );
+                    },
                   ),
                 ],
               ),

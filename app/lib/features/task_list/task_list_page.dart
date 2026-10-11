@@ -6,6 +6,7 @@ import '../../domain/day_boundary.dart';
 import '../../domain/view_kind.dart';
 import '../../providers/app_providers.dart';
 import '../../ui/theme/app_theme.dart';
+import '../quick_voice/quick_voice_button.dart';
 import '../task_edit/task_edit_sheet.dart';
 import 'task_tile.dart';
 
@@ -47,12 +48,7 @@ class TaskListPage extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          FloatingActionButton.small(
-            heroTag: 'mic',
-            tooltip: '语音输入（M2 接入）',
-            onPressed: () => _showMicPlaceholder(context),
-            child: const Icon(Icons.mic_none),
-          ),
+          const QuickVoiceButton(),
           const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'add',
@@ -62,12 +58,6 @@ class TaskListPage extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-
-  void _showMicPlaceholder(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('语音输入将在 M2 加入')),
     );
   }
 }

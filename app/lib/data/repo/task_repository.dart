@@ -31,7 +31,7 @@ class TaskRepository {
     return id;
   }
 
-  Future<void> createTask({
+  Future<String> createTask({
     required String title,
     required String listId,
     String? note,
@@ -58,6 +58,7 @@ class TaskRepository {
       ),
     );
     await _syncReminder(await _db.taskDao.findById(id));
+    return id;
   }
 
   Future<void> updateTask({

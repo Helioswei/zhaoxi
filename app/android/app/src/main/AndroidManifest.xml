@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <!-- 系统语音识别需要联网（M2） -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 语音输入（M2） -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="朝夕"
         android:name="${applicationName}"
@@ -61,6 +63,10 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Android 11+ 包可见性：语音识别服务（speech_to_text） -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
         </intent>
     </queries>
 </manifest>
