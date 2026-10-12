@@ -118,6 +118,30 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
 
   Future<void> deleteAllTasks() => delete(tasks).go();
 
+  // ------------------------------------------------------------ 回收站
+
+  /// 回收站：查看已（软）删除的任务，最近的在前。
+  Stream<List<Task>> watchDeleted() {
+    return (select(tasks)
+          ..where((t) => t.deleted.equals(true))
+          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+        .watch();
+  }
+
+  /// 从回收站彻底删除（物理删除，不可恢复）。
+  Future<void> hardDelete(String id) =>
+      (delete(tasks)..where((t) => t.id.equals(id))).go();
+
+  Future<void> hardDeleteAll() =>
+      (delete(tasks)..where((t) => t.deleted.equals(true))).go();
+
+  /// 清理 30 天前删除的记录。
+  Future<int> purgeDeletedOlderThan(int beforeMs) async {
+    return (delete(tasks)
+          ..where((t) => t.deleted.equals(true) & t.updatedAt.isSmallerThanValue(beforeMs)))
+        .go();
+  }
+
   /// 新建任务排在最后：取当前最大值 + 一个步长。
   Future<double> nextSortOrder() async {
     final row = await (selectOnly(tasks)

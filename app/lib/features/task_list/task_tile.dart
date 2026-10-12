@@ -128,7 +128,25 @@ class TaskTile extends ConsumerWidget {
                     children: [
                       AppBadge(label.text, color: labelColor),
                       const SizedBox(height: 4),
-                      Row(
+                      if (done)
+                        InkWell(
+                          onTap: toggle,
+                          borderRadius: BorderRadius.circular(999),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            child: Text(
+                              '恢复',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: t.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (repeat != null) ...[

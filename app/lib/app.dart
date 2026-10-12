@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/export/export_page.dart';
 import 'features/settings/list_manage_page.dart';
+import 'features/settings/recycle_bin_page.dart';
 import 'features/settings/settings_page.dart';
 import 'features/settings/view_manage_page.dart';
 import 'features/task_list/task_list_page.dart';
@@ -45,6 +46,7 @@ class ZhaoxiApp extends ConsumerWidget {
         ExportPage.routeName: (_) => const ExportPage(),
         ViewManagePage.routeName: (_) => const ViewManagePage(),
         ListManagePage.routeName: (_) => const ListManagePage(),
+        RecycleBinPage.routeName: (_) => const RecycleBinPage(),
       },
       home: const TaskListPage(),
     );

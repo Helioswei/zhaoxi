@@ -241,8 +241,13 @@ CREATE INDEX idx_tasks_sort_order   ON tasks(sort_order);
 | 完成（重复） | `due_at` 跳到 **`now` 之后第一个符合规则的时间点**（逾期多期不逐格补），`completed_count+1`，`completed_at=now`，status 保持 0，重排通知 |
 | 撤销完成（普通） | `status=0`；`remind_at` 在未来则重排，已过则不排并提示 |
 | 撤销完成（重复） | **按 `repeat_rule` 反向推回上一个周期**恢复 `due_at`，`completed_count-1`；若已跨过该时刻则重排通知 |
-| 删除 | `deleted=1`，取消通知 |
-| 撤销删除 | `deleted=0`；`remind_at` 在未来则重排，已过则不排并提示 |
+| 删除 | `deleted=1`，取消通知（**进回收站**） |
+| 撤销删除（提示条） | `deleted=0`；`remind_at` 在未来则重排，已过则不排并提示 |
+| 回收站查看 | 设置 → 数据 → 回收站：列出 `deleted=1` 的任务（按删除时间倒序） |
+| 从回收站恢复 | `deleted=0`（等同“撤销删除”），含通知重排 |
+| 从回收站彻底删除 | 物理删除该行（不可恢复），并取消其通知 |
+| 清空回收站 | 物理删除全部 `deleted=1`；另提供 30 天前记录自动清理 |
+| 已完成 → 恢复 | 点条目上的「恢复」（或完成圆点）→ `status=0`、`completed_at=null`，回待办 |
 | 删除清单 | 由用户在删除前**选择归属清单**（默认"生活"），所选清单的 `list_id` 迁移过去 |
 | 清空已删除 | 设置 → 危险，手动触发：物理删除 `deleted=1` 且 >30 天的行；这些行已无通知，不影响通知 |
 | 清空数据 | 见 03 §3.6：范围可选（仅 tasks+lists / 含 settings）；**必先二次确认**；**先取消全部通知**；可选"清空前自动导出 JSON"；`device_id`/`notif_id_counter` 始终保留 |

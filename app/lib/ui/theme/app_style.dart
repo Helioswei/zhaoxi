@@ -14,7 +14,7 @@ enum AppStyleId {
 
   static AppStyleId fromId(String? id) => values.firstWhere(
         (s) => s.id == id,
-        orElse: () => AppStyleId.fresh,
+        orElse: () => AppStyleId.warm,
       );
 }
 

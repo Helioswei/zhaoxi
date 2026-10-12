@@ -193,6 +193,20 @@ class TaskRepository {
     await _syncReminder(await _db.taskDao.findById(id));
   }
 
+  // -------------------------------------------------------------- 回收站
+
+  Stream<List<Task>> watchDeleted() => _db.taskDao.watchDeleted();
+
+  /// 彻底删除（不可恢复）。
+  Future<void> hardDelete(String id) => _db.taskDao.hardDelete(id);
+
+  Future<void> hardDeleteAll() => _db.taskDao.hardDeleteAll();
+
+  /// 清理 30 天前删除的记录，返回清理条数。
+  Future<int> purgeOldDeleted() => _db.taskDao.purgeDeletedOlderThan(
+        _nowMs() - const Duration(days: 30).inMilliseconds,
+      );
+
   Future<void> restore(String id) async {
     await _db.taskDao.patch(
       id,
@@ -211,7 +225,7 @@ class TaskRepository {
 
   // -------------------------------------------------------------- 手工排序
 
-  /// 「全部」视图内的**组内**拖拽排序。
+  /// 「全部」视图内的**组内**拖拽排序；也用于其他视图的"同一时间槽内"微调。
   ///
   /// [beforeId] / [afterId] 是插入位置的左右邻居任务（分组头视为 null）。
   Future<void> reorderWithinGroup({
@@ -222,8 +236,11 @@ class TaskRepository {
   }) async {
     final all = await _db.taskDao.allOrderedBySort();
     final byId = {for (final t in all) t.id: t};
-    final before = beforeId == null ? null : byId[beforeId]?.sortOrder;
-    final after = afterId == null ? null : byId[afterId]?.sortOrder;
+    // 忽略自己作为邻居的情况（防御）
+    final before =
+        (beforeId == null || beforeId == movedId) ? null : byId[beforeId]?.sortOrder;
+    final after =
+        (afterId == null || afterId == movedId) ? null : byId[afterId]?.sortOrder;
 
     if (!retried && needsRenormalize(before, after)) {
       await renormalizeSortOrders();

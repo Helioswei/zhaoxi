@@ -266,8 +266,9 @@ class _TaskListBody extends ConsumerWidget {
 
     final lists = ref.watch(listsProvider).value ?? const <TaskList>[];
     final byId = {for (final l in lists) l.id: l};
+    final bounds = DayBounds();
 
-    if (view != ViewKind.all || searching) {
+    if (searching) {
       return ListView.builder(
         padding: const EdgeInsets.only(top: 4, bottom: 120),
         itemCount: list.length,
@@ -275,8 +276,24 @@ class _TaskListBody extends ConsumerWidget {
       );
     }
 
+    // 除「全部」外的视图：也能拖拽，但只在**同一时间槽内**生效
+    // （今天里大多是无时刻的任务，它们同属一个时间槽，可以随意排）。
+    if (view != ViewKind.all) {
+      return ReorderableListView.builder(
+        buildDefaultDragHandles: false,
+        padding: const EdgeInsets.only(top: 4, bottom: 120),
+        itemCount: list.length,
+        onReorderItem: (oldIndex, newIndex) =>
+            _reorderInSlot(ref, list, oldIndex, newIndex),
+        itemBuilder: (context, index) => ReorderableDragStartListener(
+          key: ValueKey('t-${list[index].id}'),
+          index: index,
+          child: _tile(context, byId, list[index]),
+        ),
+      );
+    }
+
     // 「全部」：按时间分组（每条只进第一个匹配的组），组内可拖拽排序。
-    final bounds = DayBounds();
     final groups = <String, List<Task>>{for (final b in _bucketOrder) b: []};
     for (final t in list) {
       groups[_bucketOf(t, bounds)]!.add(t);
@@ -311,6 +328,28 @@ class _TaskListBody extends ConsumerWidget {
         );
       },
     );
+  }
+
+  /// 同一时间槽内排序（不同 dueAt 一律拒绝 → 列表回弹）。
+  void _reorderInSlot(
+    WidgetRef ref,
+    List<Task> tasks,
+    int oldIndex,
+    int newIndex,
+  ) {
+    final moved = tasks[oldIndex];
+    final without = [...tasks]..removeAt(oldIndex);
+    final prev = newIndex - 1 >= 0 ? without[newIndex - 1] : null;
+    final next = newIndex < without.length ? without[newIndex] : null;
+
+    bool sameSlot(Task? other) => other == null || other.dueAt == moved.dueAt;
+    if (!sameSlot(prev) || !sameSlot(next)) return;
+
+    ref.read(taskRepositoryProvider).reorderWithinGroup(
+          movedId: moved.id,
+          beforeId: prev?.id,
+          afterId: next?.id,
+        );
   }
 
   /// 组内排序：跨组一律拒绝（列表会自动回弹）。

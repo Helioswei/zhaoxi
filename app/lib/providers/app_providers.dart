@@ -79,6 +79,11 @@ final listsProvider = StreamProvider<List<TaskList>>(
   (ref) => ref.watch(listRepositoryProvider).watchAll(),
 );
 
+/// 回收站（软删除的任务）。
+final deletedTasksProvider = StreamProvider<List<Task>>(
+  (ref) => ref.watch(taskRepositoryProvider).watchDeleted(),
+);
+
 /// 默认提醒提前量（分钟，0/5/15/30）。
 class RemindOffsetNotifier extends Notifier<int> {
   @override
@@ -277,7 +282,7 @@ class StyleNotifier extends Notifier<AppStyleId> {
   @override
   AppStyleId build() {
     _load();
-    return AppStyleId.fresh;
+    return AppStyleId.warm; // 默认风格（用户选定）
   }
 
   Future<void> _load() async {

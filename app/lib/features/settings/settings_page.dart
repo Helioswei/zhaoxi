@@ -181,6 +181,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).pushNamed('/export'),
           ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: const Text('回收站'),
+            subtitle: const Text('删过的任务先来这里，可恢复或彻底删除'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).pushNamed('/recycle'),
+          ),
           const Divider(),
           _section(context, '关于'),
           const ListTile(

@@ -113,5 +113,9 @@ void main() {
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
     expect(find.text('写点什么呢？'), findsOneWidget);
+
+    // 提示条带一个内兵定时器，排空后再结束测试。
+    await tester.pump(const Duration(seconds: 7));
+    await tester.pumpAndSettle();
   });
 }
