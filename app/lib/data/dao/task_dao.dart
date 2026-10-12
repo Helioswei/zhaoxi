@@ -135,7 +135,18 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
   Future<void> hardDeleteAll() =>
       (delete(tasks)..where((t) => t.deleted.equals(true))).go();
 
-  /// 清理 30 天前删除的记录。
+  /// 全局搜索：标题或备注包含关键词（不分视图、含已完成）。
+  Stream<List<Task>> watchSearch(String query, {String? listId}) {
+    final q = select(tasks)..where((t) => t.deleted.equals(false));
+    final pattern = '%${query.replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
+    q.where((t) => t.title.like(pattern) | t.note.like(pattern));
+    if (listId != null) q.where((t) => t.listId.equals(listId));
+    q.orderBy([(t) => OrderingTerm.desc(t.updatedAt)]);
+    q.limit(200);
+    return q.watch();
+  }
+
+  /// 清理 [beforeMs] 之前删除的记录。
   Future<int> purgeDeletedOlderThan(int beforeMs) async {
     return (delete(tasks)
           ..where((t) => t.deleted.equals(true) & t.updatedAt.isSmallerThanValue(beforeMs)))

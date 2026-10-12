@@ -34,12 +34,37 @@ class RecycleBinPage extends ConsumerWidget {
           ? const AppEmptyState(
               emoji: '🗑️',
               text: '回收站是空的',
-              hint: '删掉的任务会先来这里，可以恢复',
+              hint: '删掉的任务会先来这里，7 天后自动清理',
             )
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              itemCount: tasks.length,
-              itemBuilder: (context, i) => _row(context, ref, tasks[i]),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline,
+                          size: 16, color: context.colors.onSurfaceVariant),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '回收站保留 7 天，过期自动清理；超期前可随时恢复。',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: context.colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    itemCount: tasks.length,
+                    itemBuilder: (context, i) => _row(context, ref, tasks[i]),
+                  ),
+                ),
+              ],
             ),
     );
   }

@@ -197,14 +197,22 @@ class TaskRepository {
 
   Stream<List<Task>> watchDeleted() => _db.taskDao.watchDeleted();
 
+  /// 回收站保留天数：超过就自动清理。
+  static const recycleRetentionDays = 7;
+
+  /// 全局搜索（标题 / 备注）。
+  Stream<List<Task>> search(String query, {String? listId}) =>
+      _db.taskDao.watchSearch(query, listId: listId);
+
   /// 彻底删除（不可恢复）。
   Future<void> hardDelete(String id) => _db.taskDao.hardDelete(id);
 
   Future<void> hardDeleteAll() => _db.taskDao.hardDeleteAll();
 
-  /// 清理 30 天前删除的记录，返回清理条数。
+  /// 清理过期的回收站记录（启动时调用），返回清理条数。
   Future<int> purgeOldDeleted() => _db.taskDao.purgeDeletedOlderThan(
-        _nowMs() - const Duration(days: 30).inMilliseconds,
+        _nowMs() -
+            const Duration(days: recycleRetentionDays).inMilliseconds,
       );
 
   Future<void> restore(String id) async {

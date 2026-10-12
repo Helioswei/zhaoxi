@@ -84,6 +84,14 @@ final deletedTasksProvider = StreamProvider<List<Task>>(
   (ref) => ref.watch(taskRepositoryProvider).watchDeleted(),
 );
 
+/// 全局搜索结果（标题 / 备注）。关键词为空时返回空列表。
+final searchResultsProvider = StreamProvider<List<Task>>((ref) {
+  final query = ref.watch(searchQueryProvider).trim();
+  if (query.isEmpty) return Stream.value(const <Task>[]);
+  final listId = ref.watch(selectedListIdProvider);
+  return ref.watch(taskRepositoryProvider).search(query, listId: listId);
+});
+
 /// 默认提醒提前量（分钟，0/5/15/30）。
 class RemindOffsetNotifier extends Notifier<int> {
   @override

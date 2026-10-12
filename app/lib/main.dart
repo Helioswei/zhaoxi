@@ -30,6 +30,13 @@ Future<void> main() async {
     // 备份失败不影响使用，用户仍可手动导出
   }
 
+  // 回收站只保留 7 天，超期自动清理。
+  try {
+    await TaskRepository(db, notifications).purgeOldDeleted();
+  } catch (_) {
+    // 清理失败不影响启动
+  }
+
   notifications.onTaskTapped = (taskId) => _openTask(db, taskId);
 
   runApp(

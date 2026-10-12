@@ -51,24 +51,52 @@ void main() {
     expect(await db.taskDao.watchDeleted().first, isEmpty);
   });
 
-  test('只清理 30 天前删除的记录', () async {
+  test('只清理超过保留期（7 天）的回收站记录', () async {
     final recent = await repo.createTask(title: '刚删的', listId: 'list-life');
     final old = await repo.createTask(title: '很久前删的', listId: 'list-life');
     await repo.softDelete(recent);
     await repo.softDelete(old);
 
-    // 把 old 的 updatedAt 改到 40 天前
+    // 把 old 的 updatedAt 改到 8 天前（超过 7 天保留期）
     final past = DateTime.now()
-        .subtract(const Duration(days: 40))
+        .subtract(const Duration(days: 8))
         .millisecondsSinceEpoch;
-    await db.taskDao.patch(
-      old,
-      TasksCompanion(updatedAt: Value(past)),
-    );
+    await db.taskDao.patch(old, TasksCompanion(updatedAt: Value(past)));
 
     final purged = await repo.purgeOldDeleted();
     expect(purged, 1);
     expect(await db.taskDao.findById(old), isNull);
     expect(await db.taskDao.findById(recent), isNotNull);
+  });
+
+  test('全局搜索：跨视图、含已完成，标题与备注都能命中', () async {
+    await repo.createTask(
+      title: '交季度报告',
+      note: '附预算表',
+      listId: 'list-work',
+      dueAt: DateTime.now()
+          .add(const Duration(days: 30))
+          .millisecondsSinceEpoch, // 远在「以后」，与当前视图无关
+    );
+    await repo.createTask(title: '买菜', listId: 'list-life');
+    final doneId = await repo.createTask(title: '写周报', listId: 'list-work');
+    await repo.setCompleted((await db.taskDao.findById(doneId))!, true);
+
+    expect((await repo.search('季度').first).map((t) => t.title),
+        ['交季度报告']);
+    expect((await repo.search('预算').first).map((t) => t.title),
+        ['交季度报告'], reason: '备注也应命中');
+    expect((await repo.search('周报').first).map((t) => t.title), ['写周报'],
+        reason: '已完成的也要能搜到');
+    expect((await repo.search('买').first).map((t) => t.title), ['买菜']);
+    expect(await repo.search('不存在的东西').first, isEmpty);
+  });
+
+  test('搜索按清单过滤（可选）', () async {
+    await repo.createTask(title: '报告 A', listId: 'list-work');
+    await repo.createTask(title: '报告 B', listId: 'list-life');
+
+    expect((await repo.search('报告', listId: 'list-work').first).length, 1);
+    expect((await repo.search('报告').first).length, 2);
   });
 }

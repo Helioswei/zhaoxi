@@ -45,7 +45,12 @@ class _TaskListPageState extends ConsumerState<TaskListPage> {
   @override
   Widget build(BuildContext context) {
     final view = ref.watch(selectedViewProvider);
-    final tasksAsync = ref.watch(taskListProvider);
+    final query = ref.watch(searchQueryProvider).trim();
+    final searching = query.isNotEmpty;
+    // 搜索时不限视图：全库搜（含已完成）。
+    final tasksAsync = searching
+        ? ref.watch(searchResultsProvider)
+        : ref.watch(taskListProvider);
 
     // 桌面端快捷键（Android 上无键盘，不触发）。
     return CallbackShortcuts(
@@ -86,7 +91,11 @@ class _TaskListPageState extends ConsumerState<TaskListPage> {
               const Divider(height: 1),
               Expanded(
                 child: tasksAsync.when(
-                  data: (tasks) => _TaskListBody(tasks: tasks, view: view),
+                  data: (tasks) => _TaskListBody(
+                    tasks: tasks,
+                    view: view,
+                    searching: searching,
+                  ),
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
                   error: (e, _) => Center(child: Text('出错了：$e')),
@@ -240,27 +249,21 @@ class _GroupHeader {
 }
 
 class _TaskListBody extends ConsumerWidget {
-  const _TaskListBody({required this.tasks, required this.view});
+  const _TaskListBody({
+    required this.tasks,
+    required this.view,
+    required this.searching,
+  });
 
   final List<Task> tasks;
   final ViewKind view;
+  final bool searching;
 
   static const _bucketOrder = ['逾期', '今天', '明天', '本周', '本月', '以后', '待定'];
 
-  List<Task> _filtered(WidgetRef ref) {
-    final query = ref.watch(searchQueryProvider).trim().toLowerCase();
-    if (query.isEmpty) return tasks;
-    return tasks
-        .where((t) =>
-            t.title.toLowerCase().contains(query) ||
-            (t.note ?? '').toLowerCase().contains(query))
-        .toList();
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final list = _filtered(ref);
-    final searching = ref.watch(searchQueryProvider).trim().isNotEmpty;
+    final list = tasks;
 
     if (list.isEmpty) return _emptyState(context, searching);
 
@@ -412,7 +415,11 @@ class _TaskListBody extends ConsumerWidget {
 
   Widget _emptyState(BuildContext context, bool searching) {
     if (searching) {
-      return const AppEmptyState(emoji: '🔍', text: '没找到匹配的任务');
+      return const AppEmptyState(
+        emoji: '🔍',
+        text: '没找到匹配的任务',
+        hint: '换个关键词试试',
+      );
     }
     return switch (view) {
       ViewKind.today => const AppEmptyState(
