@@ -92,7 +92,7 @@
 
 | # | 事项 | 依赖 |
 |---|---|---|
-| T-1 | macOS 构建（工程与 entitlements 已就绪） | 需先装 **Xcode + CocoaPods** |
+| T-1 | macOS 构建 | 🔄 **CI 已能出包**（macos job 通过，ad-hoc 签名，首次打开需右键→打开）；本机仍缺 Xcode |
 | T-2 | 自动备份改为「用户自选目录」+ macOS security-scoped bookmark | 依赖 T-1 才好验证 |
 | T-8 | 备份导入时可选「按清单/时间范围过滤」（当前是全量合并/覆盖） | — |
 | **T-9** | **「分享到朝夕」导入**（ACTION_SEND/VIEW 接收 .json）：彻底绕开系统文件选择器 | 见下 |
@@ -123,6 +123,7 @@
 
 | 日期 | 决策 |
 |---|---|
+| 2026-10-18 | **GitHub Actions**：push/手动构建 Android+macOS 产物；打 tag 自动 Release；Android 用 secret keystore 保持签名一致 |
 | 2026-10-18 | **移除语音输入**（依赖系统识别、部分机型不可用）；删除麦克风/联网权限，App 纯离线 |
 | 2026-10-12 | 导出拆为「导出」弹层（4 控件 + 折叠高级项）+「备份与恢复」独立页（方案 B） |
 | 2026-10-12 | 导出格式：PDF / Word / Excel / Markdown / 文字（复制）；分组按范围自动决定 |
