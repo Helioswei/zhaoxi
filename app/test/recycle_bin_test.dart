@@ -51,15 +51,15 @@ void main() {
     expect(await db.taskDao.watchDeleted().first, isEmpty);
   });
 
-  test('只清理超过保留期（7 天）的回收站记录', () async {
+  test('只清理超过保留期（40 天）的回收站记录', () async {
     final recent = await repo.createTask(title: '刚删的', listId: 'list-life');
     final old = await repo.createTask(title: '很久前删的', listId: 'list-life');
     await repo.softDelete(recent);
     await repo.softDelete(old);
 
-    // 把 old 的 updatedAt 改到 8 天前（超过 7 天保留期）
+    // 把 old 的 updatedAt 改到 41 天前（超过 40 天保留期）
     final past = DateTime.now()
-        .subtract(const Duration(days: 8))
+        .subtract(const Duration(days: 41))
         .millisecondsSinceEpoch;
     await db.taskDao.patch(old, TasksCompanion(updatedAt: Value(past)));
 

@@ -15,6 +15,7 @@ class ExportBundle {
     required this.options,
     required this.done,
     required this.open,
+    required this.deleted,
     required this.lists,
     required this.from,
     required this.to,
@@ -23,11 +24,15 @@ class ExportBundle {
   final ExportOptions options;
   final List<Task> done;
   final List<Task> open;
+
+  /// 区间内被删除的任务（按删除时间 = updatedAt）。
+  final List<Task> deleted;
+
   final Map<String, TaskList> lists;
   final DateTime from;
   final DateTime to;
 
-  bool get isEmpty => done.isEmpty && open.isEmpty;
+  bool get isEmpty => done.isEmpty && open.isEmpty && deleted.isEmpty;
 }
 
 /// 导出：范围过滤 + Markdown/PDF 排版 + 全量 JSON 备份。
@@ -57,6 +62,12 @@ class ExportService {
       open = open.where((t) => t.listId == options.listId).toList();
     }
 
+    final deleted = options.includeDeleted
+        ? (await _db.taskDao.deletedBetween(fromMs, toMs))
+            .where((t) => options.listId == null || t.listId == options.listId)
+            .toList()
+        : <Task>[];
+
     final lists = <String, TaskList>{
       for (final l in await _db.listDao.getAll()) l.id: l,
     };
@@ -65,6 +76,7 @@ class ExportService {
       options: options,
       done: done,
       open: open,
+      deleted: deleted,
       lists: lists,
       from: range.from,
       to: range.to,
@@ -89,6 +101,17 @@ class ExportService {
       sb.writeln('## 未完成 / 结转（${b.open.length} 项）');
       sb.writeln();
       _writeGrouped(sb, b, b.open, completed: false);
+    }
+
+    if (b.deleted.isNotEmpty) {
+      sb.writeln('## 已删除（${b.deleted.length} 项）');
+      sb.writeln();
+      for (final t in b.deleted) {
+        final when = _d(DateTime.fromMillisecondsSinceEpoch(t.updatedAt));
+        sb.writeln('- [x] ${t.title}（删除于 $when）');
+        if ((t.note ?? '').isNotEmpty) sb.writeln('  > ${t.note}');
+      }
+      sb.writeln();
     }
     return sb.toString();
   }
@@ -158,6 +181,20 @@ class ExportService {
                 style: pw.TextStyle(font: font, fontSize: 14)),
             pw.SizedBox(height: 6),
             ..._pdfGrouped(b, b.open, completed: false, font: font),
+          ],
+          if (b.deleted.isNotEmpty) ...[
+            pw.SizedBox(height: 12),
+            pw.Text('已删除（${b.deleted.length} 项）',
+                style: pw.TextStyle(font: font, fontSize: 14)),
+            pw.SizedBox(height: 6),
+            ...b.deleted.map((t) => pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 3),
+                  child: pw.Text(
+                    '${t.title}（删除于 ${_d(DateTime.fromMillisecondsSinceEpoch(t.updatedAt))}）',
+                    style: pw.TextStyle(
+                        font: font, fontSize: 10, color: PdfColors.grey700),
+                  ),
+                )),
           ],
         ],
       ),
@@ -294,6 +331,7 @@ extension ExportBundleSummary on ExportBundle {
   String get summary {
     final parts = <String>['${done.length} 项已完成'];
     if (open.isNotEmpty) parts.add('${open.length} 项未完成');
+    if (deleted.isNotEmpty) parts.add('${deleted.length} 项已删除');
     return parts.join(' + ');
   }
 }

@@ -254,4 +254,36 @@ void main() {
       throwsA(isA<ImportException>()),
     );
   });
+
+  test('导出可包含已删除任务（MD / PDF 同一开关）', () async {
+    await addTask(
+        id: 'a', title: '做完了', listId: 'list-work', completedAt: inMonth);
+    await addTask(id: 'b', title: '删掉的', listId: 'list-work');
+    // 标记为已删除，删除时间落在本月
+    await db.taskDao.patch(
+      'b',
+      TasksCompanion(
+        deleted: const Value(true),
+        updatedAt: Value(inMonth),
+      ),
+    );
+
+    final without = await export.collectRange(
+      const ExportOptions(preset: ExportRangePreset.thisMonth),
+      now: now,
+    );
+    expect(without.deleted, isEmpty);
+    expect(export.toMarkdown(without, now: now).contains('已删除'), isFalse);
+
+    final withDeleted = await export.collectRange(
+      const ExportOptions(
+        preset: ExportRangePreset.thisMonth,
+        includeDeleted: true,
+      ),
+      now: now,
+    );
+    expect(withDeleted.deleted.map((t) => t.title), ['删掉的']);
+    expect(export.toMarkdown(withDeleted, now: now),
+        contains('## 已删除（1 项）'));
+  });
 }

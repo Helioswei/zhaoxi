@@ -30,7 +30,7 @@
 | `note` | TEXT | NULL | ≤2000 字素簇 |
 | **`list_id`** | TEXT | NOT NULL | 所属清单，外键 → `lists.id` |
 | `status` | INTEGER | NOT NULL DEFAULT 0 | 0=待办，1=已完成 |
-| `due_at` | INTEGER | NULL | 截止时间（UTC 毫秒）；**NULL = 待定** |
+| `due_at` | INTEGER | NULL | 截止时间（UTC 毫秒）；**迁移后不再产生 NULL**（v2 把旧的无日期任务落到今天） |
 | `due_has_time` | INTEGER | NOT NULL DEFAULT 0 | 0=只到某天；1=精确到分钟 |
 | `remind_at` | INTEGER | NULL | 提醒时间；NULL=不提醒 |
 | `notif_id` | INTEGER | NULL | 系统通知 ID（自增） |
@@ -69,7 +69,7 @@ CREATE INDEX idx_tasks_sort_order   ON tasks(sort_order);
 |---|---|---|---|
 | 只选"明天" | 0 | 明天**本地 00:00** 的 UTC 值 | 明天**本地 09:00**（默认，可改；已过则不排） |
 | 选"明天 9:00" | 1 | 明天本地 09:00 的 UTC 值 | = `due_at` |
-| **不设时间** | 0 | **NULL**（归「待定」） | NULL |
+| 未选时间 | 0 | **默认今天** 本地 00:00（迁移保证非空） | 今天本地 09:00 |
 
 ---
 
@@ -123,7 +123,6 @@ CREATE INDEX idx_tasks_sort_order   ON tasks(sort_order);
 | **`view_labels`** | `{}` | 重命名覆盖，如 `{"week":"这周"}` |
 | **`active_list_filter`** | `all` | 上次选中的清单筛选 |
 | **`last_used_list`** | `life` | 新建任务默认清单（筛选为「全部」时用） |
-| `nudge_undated_weekly` | `false` | 每周整理"待定"提醒开关 |
 | `last_backup_date` | NULL | |
 | `backup_dir` | NULL | 展示路径 |
 | `backup_dir_bookmark` | NULL | macOS bookmark（base64） |
@@ -131,16 +130,12 @@ CREATE INDEX idx_tasks_sort_order   ON tasks(sort_order);
 
 **视图 id 对照**
 
-| id | 默认名 | 锁定 |
-|---|---|---|
-| `today` | 今天 | 否 |
-| `tomorrow` | 明天 | 否 |
-| `week` | 本周 | 否 |
-| `month` | 本月 | 否 |
-| `later` | 以后 | 否 |
-| `undated` | 待定 | 否 |
-| `all` | 全部 | **是** |
-| `done` | 已完成 | **是** |
+| id | 默认名 | 默认显示 | 锁定 |
+|---|---|---|---|
+| `today` | 今天 | ✅ | **是** |
+| `upcoming` | 接下来 | ✅ | 否 |
+| `done` | 已完成 | ✅ | **是** |
+| `all` | 全部 | ❌ 隐藏 | 否 |
 
 ---
 
@@ -148,16 +143,14 @@ CREATE INDEX idx_tasks_sort_order   ON tasks(sort_order);
 
 > 边界值（本地时区计算后转 UTC）：`TODAY_END` / `TOMORROW_END` / `WEEK_START` / `WEEK_END` / `MONTH_START` / `NEXT_MONTH_START`。
 
-| 视图 | 条件（均 `deleted = 0`） | 排序 |
+| 视图 | 条件（均 `deleted = 0`） | 分组 / 排序 |
 |---|---|---|
-| 待定 `undated` | `status=0 AND due_at IS NULL` | `created_at DESC` |
-| 今天 `today` | `status=0 AND due_at IS NOT NULL AND due_at < TODAY_END` | `due_at ASC, sort_order ASC` |
-| 明天 `tomorrow` | `status=0 AND due_at >= TODAY_END AND due_at < TOMORROW_END` | `due_at ASC, sort_order ASC` |
-| 本周 `week` | `status=0 AND due_at >= WEEK_START AND due_at < WEEK_END` | `due_at ASC, sort_order ASC` |
-| 本月 `month` | `status=0 AND due_at >= MONTH_START AND due_at < NEXT_MONTH_START` | `due_at ASC, sort_order ASC` |
-| 以后 `later` | `status=0 AND due_at >= NEXT_MONTH_START` | `due_at ASC` |
-| 全部 `all` | `status=0` | 按 **逾期→今天→明天→本周→本月→以后→待定** 顺序，**每条只进第一个匹配的组**（避免重叠入多组）；**组内按 `sort_order`（手工拖拽顺序）** |
+| 今天 `today` | `status=0 AND due_at IS NOT NULL AND due_at < TOMORROW_START`（含逾期） | 分组：**逾期 → 今天**；组内 `due_at ASC, sort_order ASC` |
+| 接下来 `upcoming` | `status=0 AND due_at >= TOMORROW_START` | 分组：**明天 → 本周 → 本月 → 更远**；组内 `due_at ASC, sort_order ASC` |
 | 已完成 `done` | `status=1` | `completed_at DESC`，LIMIT 500 + 加载更多 |
+| 全部 `all`（默认隐藏） | `status=0` | 分组：逾期→今天→明天→本周→本月→更远；组内 `sort_order`（手工拖拽） |
+
+> **没有 `undated` 视图**：`due_at` 为 NULL 的旧数据在迁移时统一落到「今天」（schemaVersion 2）。
 
 **清单筛选**：上述任一视图都可叠加 `AND list_id = :list`（或全部清单）。
 

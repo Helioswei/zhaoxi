@@ -1,34 +1,25 @@
-/// 8 个时间视图。顺序即默认标签栏顺序（`today` 优先，`undated` 不占 C 位）。
+/// 视图（时间维度）。默认只显示三个：今天 / 接下来 / 已完成。
+///
+/// - 今天：逾期 + 今天到期
+/// - 接下来：明天及以后，按「明天 / 本周 / 本月 / 更远」分组
+/// - 已完成：做过的
+/// - 全部：默认隐藏（高级用法 / 安全网）
 enum ViewKind {
-  undated('undated', '待定'),
   today('today', '今天'),
-  tomorrow('tomorrow', '明天'),
-  week('week', '本周'),
-  month('month', '本月'),
-  later('later', '以后'),
-  all('all', '全部'),
-  done('done', '已完成');
+  upcoming('upcoming', '接下来'),
+  done('done', '已完成'),
+  all('all', '全部');
 
   const ViewKind(this.id, this.label);
 
   final String id;
   final String label;
 
-  /// 默认标签栏顺序（对应 `settings.view_order` 的出厂值）。
-  static const List<ViewKind> defaultOrder = [
-    today,
-    tomorrow,
-    week,
-    month,
-    later,
-    undated,
-    all,
-    done,
-  ];
+  /// 标签栏默认顺序；`all` 默认隐藏（见 [ViewConfig]）。
+  static const List<ViewKind> defaultOrder = [today, upcoming, done, all];
 
-  /// 不可隐藏的两个"安全网"视图。
-  bool get isLocked => this == all || this == done;
+  /// 不可隐藏的视图：今天（核心）、已完成（历史）。
+  bool get isLocked => this == today || this == done;
 
-  /// 可隐藏（非锁定项）。
   bool get canHide => !isLocked;
 }

@@ -11,37 +11,28 @@ part 'task_dao.g.dart';
 class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
   TaskDao(super.db);
 
-  /// 按"时间视图 + 清单"查询任务，实时流。
+  /// 按视图 + 清单查询任务，实时流。
+  ///
+  /// 视图语义（见 02 §2.2）：
+  /// - 今天：`due_at < 明天 00:00`（**含逾期**）
+  /// - 接下来：`due_at >= 明天 00:00`
+  /// - 全部：所有未完成（默认隐藏）
+  /// - 已完成：`status = 1`
   Stream<List<Task>> watch(TaskFilter f) {
     final q = select(tasks)..where((t) => t.deleted.equals(false));
     final b = f.bounds;
 
     switch (f.view) {
-      case ViewKind.undated:
-        q.where((t) => t.status.equals(0) & t.dueAt.isNull());
       case ViewKind.today:
         q.where((t) =>
             t.status.equals(0) &
             t.dueAt.isNotNull() &
             t.dueAt.isSmallerThanValue(b.tomorrowStartMs));
-      case ViewKind.tomorrow:
+      case ViewKind.upcoming:
         q.where((t) =>
             t.status.equals(0) &
-            t.dueAt.isBiggerOrEqualValue(b.tomorrowStartMs) &
-            t.dueAt.isSmallerThanValue(b.dayAfterTomorrowStartMs));
-      case ViewKind.week:
-        q.where((t) =>
-            t.status.equals(0) &
-            t.dueAt.isBiggerOrEqualValue(b.weekStartMs) &
-            t.dueAt.isSmallerThanValue(b.nextWeekStartMs));
-      case ViewKind.month:
-        q.where((t) =>
-            t.status.equals(0) &
-            t.dueAt.isBiggerOrEqualValue(b.monthStartMs) &
-            t.dueAt.isSmallerThanValue(b.nextMonthStartMs));
-      case ViewKind.later:
-        q.where((t) =>
-            t.status.equals(0) & t.dueAt.isBiggerOrEqualValue(b.nextMonthStartMs));
+            t.dueAt.isNotNull() &
+            t.dueAt.isBiggerOrEqualValue(b.tomorrowStartMs));
       case ViewKind.all:
         q.where((t) => t.status.equals(0));
       case ViewKind.done:
@@ -57,12 +48,10 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
       case ViewKind.done:
         q.orderBy([(t) => OrderingTerm.desc(t.completedAt)]);
         q.limit(500);
-      case ViewKind.undated:
-        q.orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
       case ViewKind.all:
-        // 「全部」组内是**手工顺序**（拖拽排序生效）。
         q.orderBy([(t) => OrderingTerm(expression: t.sortOrder)]);
-      default:
+      case ViewKind.today:
+      case ViewKind.upcoming:
         q.orderBy([
           (t) => OrderingTerm(expression: t.dueAt, mode: OrderingMode.asc),
           (t) => OrderingTerm(expression: t.sortOrder, mode: OrderingMode.asc),
@@ -70,20 +59,6 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
     }
 
     return q.watch();
-  }
-
-  /// 未完成、无日期（「待定」）的条数——用于「今天」页顶部汇总。
-  Stream<int> watchUndatedCount({String? listId}) {
-    final count = countAll();
-    final q = selectOnly(tasks)
-      ..addColumns([count])
-      ..where(tasks.deleted.equals(false) &
-          tasks.status.equals(0) &
-          tasks.dueAt.isNull());
-    if (listId != null) {
-      q.where(tasks.listId.equals(listId));
-    }
-    return q.map((row) => row.read(count) ?? 0).watchSingle();
   }
 
   Future<void> upsert(TasksCompanion task) =>
@@ -116,6 +91,17 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
         .get();
   }
 
+  /// 区间内被删除的任务（按删除时间 = updatedAt）。
+  Future<List<Task>> deletedBetween(int from, int to) {
+    return (select(tasks)
+          ..where((t) =>
+              t.deleted.equals(true) &
+              t.updatedAt.isBiggerOrEqualValue(from) &
+              t.updatedAt.isSmallerThanValue(to))
+          ..orderBy([(t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc)]))
+        .get();
+  }
+
   Future<void> deleteAllTasks() => delete(tasks).go();
 
   // ------------------------------------------------------------ 回收站
@@ -128,13 +114,6 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
         .watch();
   }
 
-  /// 从回收站彻底删除（物理删除，不可恢复）。
-  Future<void> hardDelete(String id) =>
-      (delete(tasks)..where((t) => t.id.equals(id))).go();
-
-  Future<void> hardDeleteAll() =>
-      (delete(tasks)..where((t) => t.deleted.equals(true))).go();
-
   /// 全局搜索：标题或备注包含关键词（不分视图、含已完成）。
   Stream<List<Task>> watchSearch(String query, {String? listId}) {
     final q = select(tasks)..where((t) => t.deleted.equals(false));
@@ -146,12 +125,22 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
     return q.watch();
   }
 
+  /// 从回收站彻底删除（物理删除，不可恢复）。
+  Future<void> hardDelete(String id) =>
+      (delete(tasks)..where((t) => t.id.equals(id))).go();
+
+  Future<void> hardDeleteAll() =>
+      (delete(tasks)..where((t) => t.deleted.equals(true))).go();
+
   /// 清理 [beforeMs] 之前删除的记录。
   Future<int> purgeDeletedOlderThan(int beforeMs) async {
     return (delete(tasks)
-          ..where((t) => t.deleted.equals(true) & t.updatedAt.isSmallerThanValue(beforeMs)))
+          ..where((t) =>
+              t.deleted.equals(true) & t.updatedAt.isSmallerThanValue(beforeMs)))
         .go();
   }
+
+  // ------------------------------------------------------------ 排序 / 清单
 
   /// 新建任务排在最后：取当前最大值 + 一个步长。
   Future<double> nextSortOrder() async {
@@ -163,7 +152,8 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
   }
 
   Future<List<Task>> allOrderedBySort() =>
-      (select(tasks)..orderBy([(t) => OrderingTerm(expression: t.sortOrder)])).get();
+      (select(tasks)..orderBy([(t) => OrderingTerm(expression: t.sortOrder)]))
+          .get();
 
   Future<void> patchSortOrder(String id, double value) => patch(
         id,
@@ -205,6 +195,14 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
     return row.read(count) ?? 0;
   }
 
+  // ---------------------------------------------------------------- 基础
+
+  Future<void> patch(String id, TasksCompanion task) =>
+      (update(tasks)..where((t) => t.id.equals(id))).write(task);
+
+  Future<Task?> findById(String id) =>
+      (select(tasks)..where((t) => t.id.equals(id))).getSingleOrNull();
+
   /// 启动时用于重排：所有尚未完成、且提醒时间在未来的任务。
   Future<List<Task>> futureReminders(int nowMs) {
     return (select(tasks)
@@ -215,10 +213,4 @@ class TaskDao extends DatabaseAccessor<AppDatabase> with _$TaskDaoMixin {
               t.remindAt.isBiggerThanValue(nowMs)))
         .get();
   }
-
-  Future<void> patch(String id, TasksCompanion task) =>
-      (update(tasks)..where((t) => t.id.equals(id))).write(task);
-
-  Future<Task?> findById(String id) =>
-      (select(tasks)..where((t) => t.id.equals(id))).getSingleOrNull();
 }

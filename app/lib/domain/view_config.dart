@@ -17,7 +17,7 @@ class ViewConfig {
 
   factory ViewConfig.defaults() => const ViewConfig(
         order: ViewKind.defaultOrder,
-        hidden: {},
+        hidden: {ViewKind.all},
         labels: {},
       );
 
@@ -80,7 +80,7 @@ class ViewConfig {
           .where((v) => v.canHide)
           .toSet();
     } catch (_) {
-      // ignore
+      hidden = {ViewKind.all};
     }
 
     Map<ViewKind, String> labels = {};

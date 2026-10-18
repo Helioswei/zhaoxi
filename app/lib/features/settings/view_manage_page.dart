@@ -115,13 +115,9 @@ class ViewManagePage extends ConsumerWidget {
   }
 
   IconData _iconFor(ViewKind v) => switch (v) {
-        ViewKind.undated => Icons.inbox_outlined,
         ViewKind.today => Icons.today_outlined,
-        ViewKind.tomorrow => Icons.event_outlined,
-        ViewKind.week => Icons.date_range_outlined,
-        ViewKind.month => Icons.calendar_month_outlined,
-        ViewKind.later => Icons.update_outlined,
-        ViewKind.all => Icons.list_alt_outlined,
+        ViewKind.upcoming => Icons.upcoming_outlined,
         ViewKind.done => Icons.check_circle_outline,
+        ViewKind.all => Icons.list_alt_outlined,
       };
 }

@@ -34,7 +34,7 @@ class RecycleBinPage extends ConsumerWidget {
           ? const AppEmptyState(
               emoji: '🗑️',
               text: '回收站是空的',
-              hint: '删掉的任务会先来这里，7 天后自动清理',
+              hint: '删掉的任务会先来这里，40 天后自动清理',
             )
           : Column(
               children: [
@@ -47,7 +47,7 @@ class RecycleBinPage extends ConsumerWidget {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          '回收站保留 7 天，过期自动清理；超期前可随时恢复。',
+                          '回收站保留 40 天，过期自动清理；超期前可随时恢复。',
                           style: TextStyle(
                             fontSize: 12,
                             color: context.colors.onSurfaceVariant,

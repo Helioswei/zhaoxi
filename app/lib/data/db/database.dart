@@ -23,12 +23,24 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.open() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            // v2：取消「待定」——把所有无日期的任务落到“今天”（数据不丢）。
+            final now = DateTime.now();
+            final todayStart = DateTime(now.year, now.month, now.day)
+                .millisecondsSinceEpoch;
+            await customStatement(
+              'UPDATE tasks SET due_at = ?, due_has_time = 0 WHERE due_at IS NULL',
+              [todayStart],
+            );
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');

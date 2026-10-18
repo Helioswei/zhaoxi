@@ -17,10 +17,12 @@ class TaskRepository {
   static const _uuid = Uuid();
   static int _nowMs() => DateTime.now().millisecondsSinceEpoch;
 
-  Stream<List<Task>> watch(TaskFilter filter) => _db.taskDao.watch(filter);
+  static int _todayStartMs() {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day).millisecondsSinceEpoch;
+  }
 
-  Stream<int> watchUndatedCount({String? listId}) =>
-      _db.taskDao.watchUndatedCount(listId: listId);
+  Stream<List<Task>> watch(TaskFilter filter) => _db.taskDao.watch(filter);
 
   Future<Task?> findById(String id) => _db.taskDao.findById(id);
 
@@ -36,13 +38,15 @@ class TaskRepository {
   Future<String> createTask({
     required String title,
     required String listId,
-    String? note,
     int? dueAt,
+    String? note,
     bool dueHasTime = false,
     int? remindAt,
     String? repeatRule,
   }) async {
     final now = _nowMs();
+    // 不再允许无日期任务：未指定时落到「今天」。
+    final effectiveDueAt = dueAt ?? _todayStartMs();
     final device = await ensureDeviceId();
     final id = _uuid.v4();
     final sortOrder = await _db.taskDao.nextSortOrder();
@@ -52,7 +56,7 @@ class TaskRepository {
         title: title,
         listId: listId,
         note: Value(note),
-        dueAt: Value(dueAt),
+        dueAt: Value(effectiveDueAt),
         dueHasTime: Value(dueHasTime),
         remindAt: Value(remindAt),
         repeatRule: Value(repeatRule),
@@ -70,19 +74,20 @@ class TaskRepository {
     required String id,
     required String title,
     required String listId,
-    String? note,
     int? dueAt,
+    String? note,
     bool dueHasTime = false,
     int? remindAt,
     String? repeatRule,
   }) async {
+    final effectiveDueAt = dueAt ?? _todayStartMs();
     await _db.taskDao.patch(
       id,
       TasksCompanion(
         title: Value(title),
         listId: Value(listId),
         note: Value(note),
-        dueAt: Value(dueAt),
+        dueAt: Value(effectiveDueAt),
         dueHasTime: Value(dueHasTime),
         remindAt: Value(remindAt),
         repeatRule: Value(repeatRule),
@@ -198,7 +203,7 @@ class TaskRepository {
   Stream<List<Task>> watchDeleted() => _db.taskDao.watchDeleted();
 
   /// 回收站保留天数：超过就自动清理。
-  static const recycleRetentionDays = 7;
+  static const recycleRetentionDays = 40;
 
   /// 全局搜索（标题 / 备注）。
   Stream<List<Task>> search(String query, {String? listId}) =>

@@ -81,7 +81,7 @@
 ## 三、目录结构
 
 ```
-todo-app/
+zhaoxi/
 ├── docs/
 ├── app/
 │   ├── lib/

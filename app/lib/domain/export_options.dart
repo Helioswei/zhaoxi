@@ -46,6 +46,7 @@ class ExportOptions {
     this.grouping = ExportGrouping.week,
     this.format = ExportFormat.markdown,
     this.listId,
+    this.includeDeleted = false,
     this.customFrom,
     this.customTo,
   });
@@ -57,6 +58,9 @@ class ExportOptions {
 
   /// null = 全部清单。
   final String? listId;
+
+  /// 是否在 Markdown / PDF 末尾追加「已删除（回收站）」章节。
+  final bool includeDeleted;
 
   final DateTime? customFrom;
   final DateTime? customTo;
@@ -76,6 +80,7 @@ class ExportOptions {
     ExportGrouping? grouping,
     ExportFormat? format,
     Object? listId = _sentinel,
+    bool? includeDeleted,
     DateTime? customFrom,
     DateTime? customTo,
   }) {
@@ -85,6 +90,7 @@ class ExportOptions {
       grouping: grouping ?? this.grouping,
       format: format ?? this.format,
       listId: listId == _sentinel ? this.listId : listId as String?,
+      includeDeleted: includeDeleted ?? this.includeDeleted,
       customFrom: customFrom ?? this.customFrom,
       customTo: customTo ?? this.customTo,
     );

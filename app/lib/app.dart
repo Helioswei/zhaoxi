@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/export/export_page.dart';
@@ -29,6 +30,14 @@ class ZhaoxiApp extends ConsumerWidget {
       theme: buildAppTheme(style: style, brightness: Brightness.light),
       darkTheme: buildAppTheme(style: style, brightness: Brightness.dark),
       themeMode: mode,
+      // 中文界面：日期/时间选择器等 Material 组件也随之变中文。
+      locale: const Locale('zh', 'CN'),
+      supportedLocales: const [Locale('zh', 'CN')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       // 字号：在系统缩放基础上再乘一个系数（大字号无障碍）。
       builder: (context, child) {
         final mq = MediaQuery.of(context);

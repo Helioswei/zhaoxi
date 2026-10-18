@@ -269,6 +269,21 @@ class _ExportPageState extends ConsumerState<ExportPage> {
             label: (v) => v.label,
             onSelect: (v) => _update(o.copyWith(content: v)),
           ),
+          if (!isJson)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  FilterChip(
+                    label: const Text('包含已删除（回收站）'),
+                    selected: o.includeDeleted,
+                    onSelected: (v) =>
+                        _update(o.copyWith(includeDeleted: v)),
+                  ),
+                ],
+              ),
+            ),
           _section('分组'),
           if (isJson)
             const _DisabledHint('JSON 为完整备份，忽略范围 / 清单 / 分组')

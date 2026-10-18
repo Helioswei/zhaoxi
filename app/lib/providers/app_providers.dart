@@ -69,12 +69,6 @@ final taskListProvider = StreamProvider<List<Task>>((ref) {
       );
 });
 
-/// 「今天」页顶部用来提示"还有 N 件没定时间"。
-final undatedCountProvider = StreamProvider<int>((ref) {
-  final listId = ref.watch(selectedListIdProvider);
-  return ref.watch(taskRepositoryProvider).watchUndatedCount(listId: listId);
-});
-
 final listsProvider = StreamProvider<List<TaskList>>(
   (ref) => ref.watch(listRepositoryProvider).watchAll(),
 );
