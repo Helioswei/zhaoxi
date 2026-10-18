@@ -65,6 +65,21 @@ zhaoxi/
 
 ---
 
+## 构建（CI）
+
+`.github/workflows/build.yml`：
+
+| 触发 | 做什么 |
+|---|---|
+| push 到 `main`（改 `app/**`） | `flutter analyze` + `flutter test` + 构建 Android APK（拆分 ABI）与 macOS `.app`，产物在 Actions → Artifacts |
+| 手动 Run workflow | 同上 |
+| 打 tag（`v1.0.0`） | 自动创建 GitHub Release，并把 APK / macOS 包挂上去 |
+
+> **签名**：Android 包用与本地相同的 `debug.keystore` 签名，才能「覆盖升级、数据不丢」。
+> 首次使用需在 **Settings → Secrets and variables → Actions** 新增
+> `ANDROID_DEBUG_KEYSTORE_BASE64`，值为本地 `~/.android/debug.keystore` 的 base64：
+> `base64 -i ~/.android/debug.keystore | pbcopy`
+
 ## 开源协议
 
 本项目采用 **MIT License**，详见 [LICENSE](./LICENSE)。
