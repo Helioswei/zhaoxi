@@ -14,32 +14,20 @@ import '../../ui/snack.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/widgets/app_pill.dart';
 
-/// 打开「导出」弹层。
+/// 导出页（与「备份与恢复」「回收站」同为页面，行为一致）。
 ///
-/// 设计：默认只露 4 个控件（范围 / 清单 / 格式 / 更多），
-/// 与首页的胶囊控件保持一致；分组不再让用户选，按范围自动决定。
-Future<void> openMonthlyReportSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: context.colors.surface,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(context.tokens.sheetRadius),
-      ),
-    ),
-    builder: (_) => const MonthlyReportSheet(),
-  );
-}
+/// 默认只露 3 组选择（范围 / 清单 / 格式），低频项收进「更多选项」；
+/// 分组不再让用户选，按范围自动决定（≤14 天按日，否则按周）。
+class ExportPage extends ConsumerStatefulWidget {
+  const ExportPage({super.key});
 
-class MonthlyReportSheet extends ConsumerStatefulWidget {
-  const MonthlyReportSheet({super.key});
+  static const routeName = '/export';
 
   @override
-  ConsumerState<MonthlyReportSheet> createState() => _MonthlyReportSheetState();
+  ConsumerState<ExportPage> createState() => _ExportPageState();
 }
 
-class _MonthlyReportSheetState extends ConsumerState<MonthlyReportSheet> {
+class _ExportPageState extends ConsumerState<ExportPage> {
   ExportRangePreset _preset = ExportRangePreset.thisMonth;
   ExportFormat _format = ExportFormat.pdf;
   ExportContent _content = ExportContent.doneAndOpen;
@@ -59,7 +47,6 @@ class _MonthlyReportSheetState extends ConsumerState<MonthlyReportSheet> {
     }
   }
 
-  /// 分组不再让用户选：≤14 天按日，否则按周（月报/季报都合适）。
   ExportGrouping get _grouping {
     final probe = ExportOptions(
       preset: _preset,
@@ -160,133 +147,118 @@ class _MonthlyReportSheetState extends ConsumerState<MonthlyReportSheet> {
             .map((l) => l.name)
             .firstOrNull ??
         '全部';
-    return '朝夕-月报-${fmt.format(range.from)}-${fmt.format(range.to.subtract(const Duration(days: 1)))}-$list';
+    return '朝夕-记录-${fmt.format(range.from)}-${fmt.format(range.to.subtract(const Duration(days: 1)))}-$list';
   }
 
   @override
   Widget build(BuildContext context) {
     final lists = ref.watch(listsProvider).value ?? const <TaskList>[];
 
-    return SafeArea(
-      top: false,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  '导出',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
+    return Scaffold(
+      appBar: AppBar(title: const Text('导出')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+        children: [
+          _label('哪一段时间'),
+          _pills<ExportRangePreset>(
+            values: ExportRangePreset.values,
+            selected: _preset,
+            label: (v) => v.label,
+            onSelect: (v) => setState(() => _preset = v),
+          ),
+          if (_preset == ExportRangePreset.custom) _customRange(),
 
-            _label('哪一段时间'),
-            _pills<ExportRangePreset>(
-              values: ExportRangePreset.values,
-              selected: _preset,
-              label: (v) => v.label,
-              onSelect: (v) => setState(() => _preset = v),
-            ),
-            if (_preset == ExportRangePreset.custom) _customRange(),
+          _label('哪些清单'),
+          _pills<String?>(
+            values: [null, ...lists.map((l) => l.id)],
+            selected: _listId,
+            label: (v) =>
+                v == null ? '全部' : lists.firstWhere((l) => l.id == v).name,
+            onSelect: (v) => setState(() => _listId = v),
+          ),
 
-            _label('哪些清单'),
-            _pills<String?>(
-              values: [null, ...lists.map((l) => l.id)],
-              selected: _listId,
-              label: (v) => v == null
-                  ? '全部'
-                  : lists.firstWhere((l) => l.id == v).name,
-              onSelect: (v) => setState(() => _listId = v),
-            ),
-
-            _label('格式'),
-            _pills<ExportFormat>(
-              values: const [
-                ExportFormat.pdf,
-                ExportFormat.word,
-                ExportFormat.xlsx,
-                ExportFormat.markdown,
-                ExportFormat.text,
-              ],
-              selected: _format,
-              label: (v) => v == ExportFormat.text ? '文字（复制）' : v.label,
-              onSelect: (v) => setState(() => _format = v),
-            ),
-
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: () => setState(() => _moreOpen = !_moreOpen),
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      _moreOpen ? Icons.expand_less : Icons.expand_more,
-                      size: 20,
-                      color: context.colors.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '更多选项',
-                      style: TextStyle(color: context.colors.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (_moreOpen) ...[
-              _label('内容'),
-              _pills<ExportContent>(
-                values: ExportContent.values,
-                selected: _content,
-                label: (v) => v.label,
-                onSelect: (v) => setState(() => _content = v),
-              ),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _includeDeleted,
-                onChanged: (v) =>
-                    setState(() => _includeDeleted = v ?? false),
-                title: const Text('包含已删除（回收站）'),
-                subtitle: const Text('在末尾加一节「已删除」'),
-              ),
+          _label('格式'),
+          _pills<ExportFormat>(
+            values: const [
+              ExportFormat.pdf,
+              ExportFormat.word,
+              ExportFormat.xlsx,
+              ExportFormat.markdown,
+              ExportFormat.text,
             ],
+            selected: _format,
+            label: (v) => v == ExportFormat.text ? '文字（复制）' : v.label,
+            onSelect: (v) => setState(() => _format = v),
+          ),
 
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: FilledButton.icon(
-                onPressed: _busy ? null : () => _run(toFile: false),
-                icon: Icon(_isText ? Icons.copy : Icons.ios_share),
-                label: Text(
-                  _isText ? '复制文字' : '分享 / 发送',
-                  style: const TextStyle(fontSize: 17),
-                ),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () => setState(() => _moreOpen = !_moreOpen),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    _moreOpen ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '更多选项',
+                    style: TextStyle(color: context.colors.onSurfaceVariant),
+                  ),
+                ],
               ),
             ),
-            if (!_isText) ...[
-              const SizedBox(height: 6),
+          ),
+          if (_moreOpen) ...[
+            _label('内容'),
+            _pills<ExportContent>(
+              values: ExportContent.values,
+              selected: _content,
+              label: (v) => v.label,
+              onSelect: (v) => setState(() => _content = v),
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _includeDeleted,
+              onChanged: (v) => setState(() => _includeDeleted = v ?? false),
+              title: const Text('包含已删除（回收站）'),
+              subtitle: const Text('在末尾加一节「已删除」'),
+            ),
+          ],
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               SizedBox(
                 width: double.infinity,
-                child: TextButton(
-                  onPressed: _busy ? null : () => _run(toFile: true),
-                  child: const Text('存到文件夹…'),
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: _busy ? null : () => _run(toFile: false),
+                  icon: Icon(_isText ? Icons.copy : Icons.ios_share),
+                  label: Text(
+                    _isText ? '复制文字' : '分享 / 发送',
+                    style: const TextStyle(fontSize: 17),
+                  ),
                 ),
               ),
+              if (!_isText)
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: _busy ? null : () => _run(toFile: true),
+                    child: const Text('存到文件夹…'),
+                  ),
+                ),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -341,7 +313,7 @@ class _MonthlyReportSheetState extends ConsumerState<MonthlyReportSheet> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(top: 16, bottom: 6),
+        padding: const EdgeInsets.only(top: 18, bottom: 6),
         child: Text(
           text,
           style: TextStyle(

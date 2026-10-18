@@ -17,7 +17,7 @@ import '../../ui/theme/app_theme.dart';
 class BackupPage extends ConsumerStatefulWidget {
   const BackupPage({super.key});
 
-  static const routeName = '/export';
+  static const routeName = '/backup';
 
   @override
   ConsumerState<BackupPage> createState() => _BackupPageState();

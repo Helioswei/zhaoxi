@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/app_providers.dart';
-import '../export/monthly_report_sheet.dart';
 import '../../services/notification_service.dart';
 import '../../ui/theme/app_theme.dart';
 
@@ -180,14 +179,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             title: const Text('导出'),
             subtitle: const Text('PDF / Word / Excel / Markdown / 文字'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => openMonthlyReportSheet(context),
+            onTap: () => Navigator.of(context).pushNamed('/export'),
           ),
           ListTile(
             leading: const Icon(Icons.backup_outlined),
             title: const Text('备份与恢复'),
             subtitle: const Text('全量 JSON 备份 / 从备份恢复'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).pushNamed('/export'),
+            onTap: () => Navigator.of(context).pushNamed('/backup'),
           ),
           ListTile(
             leading: const Icon(Icons.delete_outline),

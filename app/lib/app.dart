@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/export/backup_page.dart';
+import 'features/export/export_page.dart';
 import 'features/settings/list_manage_page.dart';
 import 'features/settings/recycle_bin_page.dart';
 import 'features/settings/settings_page.dart';
@@ -52,6 +53,7 @@ class ZhaoxiApp extends ConsumerWidget {
       },
       routes: {
         SettingsPage.routeName: (_) => const SettingsPage(),
+        ExportPage.routeName: (_) => const ExportPage(),
         BackupPage.routeName: (_) => const BackupPage(),
         ViewManagePage.routeName: (_) => const ViewManagePage(),
         ListManagePage.routeName: (_) => const ListManagePage(),
