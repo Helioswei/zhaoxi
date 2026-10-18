@@ -231,7 +231,7 @@ macOS 沙盒下，`Info.plist` 声明**不够**，还必须在 `*.entitlements` 
 | **PDF** | `pdf` 包 | 打包思源宋体；**与 Markdown 同一套排版** |
 | **范围/清单过滤** | `export_service` | 范围（本周/本月/上周/上月/自定义）× 清单 × 内容 × 分组；**「月报」预设** = 本月+工作+仅已完成+按周+Markdown |
 | **落盘** | `share_plus` / `file_picker` | 见 §4.1，P0 |
-| **自动备份** | `backup_service` | 每日首启写全量 JSON；macOS 用 bookmark；`zhaoxi-YYYYMMDD.json`，保留 14 份 |
+| **自动备份** | `backup_service` | 每日首启写全量 JSON（**与上一份相同则跳过**）；保留 7 份；列表可分享/恢复 |
 
 **相关实现落点**
 

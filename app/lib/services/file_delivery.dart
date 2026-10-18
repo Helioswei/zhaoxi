@@ -35,12 +35,13 @@ Future<bool> saveBytesAs({
 }
 
 /// 选择并读取一个 UTF-8 文本文件（用于导入备份）。
-Future<String?> pickTextFile({
-  List<String> allowedExtensions = const ['json'],
-}) async {
+///
+/// 用 `FileType.any` 而不是限定 `.json`：Android 上按 MIME 过滤时，
+/// 很多文件管理器会把 JSON 标成 octet-stream/plain，导致列表里看不到目录与文件名。
+/// 选完再由 ImportService 校验内容。
+Future<String?> pickTextFile() async {
   final files = await FilePicker.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: allowedExtensions,
+    type: FileType.any,
     dialogTitle: '选择备份文件',
   );
   if (files.isEmpty) return null;

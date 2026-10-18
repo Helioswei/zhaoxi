@@ -23,7 +23,7 @@ class BackupService {
   final ExportService _export;
   final Future<Directory> Function() _dirProvider;
 
-  static const keep = 14;
+  static const keep = 7;
 
   static Future<Directory> _defaultDir() async {
     final docs = await getApplicationDocumentsDirectory();
@@ -47,19 +47,37 @@ class BackupService {
   }
 
   /// 每天首次启动备份一次；今天已备份过则返回 null。
+  ///
+  /// **去重**：如果内容和最近一份完全一样（忽略导出时间），就不新增文件，
+  /// 避免"每天开 App 就多一份一模一样的备份"。
   Future<File?> runIfNeeded({DateTime? now}) async {
     final at = now ?? DateTime.now();
     final today = DateFormat('yyyy-MM-dd').format(at);
     final last = await _db.settingsDao.get(SettingsKeys.lastBackupDate);
     if (last == today) return null;
-    final file = await backupNow(now: at);
+
+    final json = await _export.buildBackupJson(now: at.millisecondsSinceEpoch);
+    final existing = await listBackups();
+    if (existing.isNotEmpty &&
+        _stable(await existing.first.readAsString()) == _stable(json)) {
+      await _db.settingsDao.set(SettingsKeys.lastBackupDate, today);
+      return null; // 数据没变，不新增
+    }
+
+    final file = await _write(json, at);
     await _db.settingsDao.set(SettingsKeys.lastBackupDate, today);
     return file;
   }
 
+  /// 手动「立即备份」：总是新建一份（用户主动要求的）。
   Future<File> backupNow({DateTime? now}) async {
     final at = now ?? DateTime.now();
-    final json = await _export.buildBackupJson();
+    final json = await _export.buildBackupJson(now: at.millisecondsSinceEpoch);
+    final file = await _write(json, at);
+    return file;
+  }
+
+  Future<File> _write(String json, DateTime at) async {
     final dir = await backupsDir();
     final file = File(
       p.join(dir.path, 'zhaoxi-${DateFormat('yyyyMMdd-HHmmss').format(at)}.json'),
@@ -68,6 +86,10 @@ class BackupService {
     await prune();
     return file;
   }
+
+  /// 去掉「导出时间」后再比较，否则每份都会不同。
+  String _stable(String json) =>
+      json.replaceAll(RegExp(r'"exportedAt": \d+,'), '');
 
   /// 只保留最近 [keep] 份。
   Future<void> prune() async {

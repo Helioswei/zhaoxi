@@ -94,6 +94,7 @@
 |---|---|---|
 | T-1 | macOS 构建（工程与 entitlements 已就绪） | 需先装 **Xcode + CocoaPods** |
 | T-2 | 自动备份改为「用户自选目录」+ macOS security-scoped bookmark | 依赖 T-1 才好验证 |
+| T-8 | 备份导入时可选「按清单/时间范围过滤」（当前是全量合并/覆盖） | — |
 | T-3 | 真机验收清单剩余项：通知到点、精确闹钟授权、月报 PDF 中文 | 需真机 |
 | T-4 | release 包换正式签名密钥（当前用调试密钥，仅够侧载） | 长期分发前 |
 | T-5 | 重复任务补「每 N 天」的 UI 入口（`RepeatRule.everyDays` 已实现，编辑页暂未暴露） | — |

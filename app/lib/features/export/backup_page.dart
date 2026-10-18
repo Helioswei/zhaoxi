@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
 
 import '../../providers/app_providers.dart';
 import '../../services/backup_service.dart';
@@ -13,7 +14,11 @@ import '../../services/notification_service.dart';
 import '../../ui/snack.dart';
 import '../../ui/theme/app_theme.dart';
 
-/// 备份与恢复（低频、偏技术，单独一页；日常用户只用「导出月报」）。
+/// 备份与恢复（低频页面，与「导出」「回收站」同级）。
+///
+/// - 手动备份：分享 / 存到文件夹
+/// - 从文件恢复：合并 / 覆盖
+/// - 自动备份：列出最近几份，可直接分享或恢复（不必先导出再导入）
 class BackupPage extends ConsumerStatefulWidget {
   const BackupPage({super.key});
 
@@ -25,6 +30,7 @@ class BackupPage extends ConsumerStatefulWidget {
 
 class _BackupPageState extends ConsumerState<BackupPage> {
   bool _busy = false;
+  bool _showAll = false;
   List<File> _backups = const [];
 
   @override
@@ -53,6 +59,11 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   String get _jsonName =>
       '朝夕-备份-${DateFormat('yyyyMMdd-HHmm').format(DateTime.now())}.json';
 
+  String _size(File f) {
+    final bytes = f.lengthSync();
+    return bytes < 1024 ? '$bytes B' : '${(bytes / 1024).toStringAsFixed(1)} KB';
+  }
+
   Future<void> _exportJson({required bool toFile}) async {
     setState(() => _busy = true);
     try {
@@ -75,10 +86,30 @@ class _BackupPageState extends ConsumerState<BackupPage> {
     }
   }
 
+  Future<void> _shareBackup(File file) async {
+    try {
+      await shareBytes(
+        fileName: p.basename(file.path),
+        bytes: await file.readAsBytes(),
+      );
+    } catch (e) {
+      if (mounted) showInfoSnack(context, '分享失败：$e');
+    }
+  }
+
+  Future<void> _restoreFrom(File file) async {
+    final content = await file.readAsString();
+    if (!mounted) return;
+    await _restoreContent(content);
+  }
+
   Future<void> _restore() async {
     final content = await pickTextFile();
     if (content == null || !mounted) return;
+    await _restoreContent(content);
+  }
 
+  Future<void> _restoreContent(String content) async {
     final overwrite = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -135,6 +166,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
       if (overwrite) {
         await ref.read(taskRepositoryProvider).rescheduleAll();
       }
+      await _refreshBackups();
       if (mounted) showInfoSnack(context, result.summary);
     } on ImportException catch (e) {
       if (mounted) showInfoSnack(context, e.message);
@@ -160,6 +192,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
 
   @override
   Widget build(BuildContext context) {
+    final shown = _showAll ? _backups : _backups.take(3).toList();
+
     return Scaffold(
       appBar: AppBar(title: const Text('备份与恢复')),
       body: ListView(
@@ -199,14 +233,16 @@ class _BackupPageState extends ConsumerState<BackupPage> {
             ),
           ),
           const Divider(height: 36),
-          _section('从备份恢复'),
+
+          _section('从文件恢复'),
           ListTile(
             leading: const Icon(Icons.restore),
             title: const Text('选择备份文件…'),
-            subtitle: const Text('合并或覆盖导入'),
+            subtitle: const Text('合并或覆盖导入（可选任意文件，内容会校验）'),
             onTap: _busy ? null : _restore,
           ),
           const Divider(height: 36),
+
           _section('自动备份'),
           ListTile(
             leading: const Icon(Icons.backup_outlined),
@@ -220,13 +256,52 @@ class _BackupPageState extends ConsumerState<BackupPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text(
-              '每天首次打开自动备份一份，保留最近 ${BackupService.keep} 份；'
-              '备份存在应用私有目录。',
+              '每天首次打开自动备份一份；数据没变就不新增。'
+              '保留最近 ${BackupService.keep} 份，存在应用私有目录。',
               style: TextStyle(
                 fontSize: 12,
                 color: context.colors.onSurfaceVariant,
               ),
             ),
+          ),
+          if (_backups.isNotEmpty) ...[
+            for (final f in shown) _backupRow(f),
+            if (_backups.length > 3)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: TextButton(
+                    onPressed: () => setState(() => _showAll = !_showAll),
+                    child: Text(
+                      _showAll ? '收起' : '查看全部（${_backups.length}）',
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _backupRow(File file) {
+    final when = DateFormat('MM-dd HH:mm').format(file.statSync().modified);
+    return ListTile(
+      dense: true,
+      leading: const Icon(Icons.description_outlined, size: 20),
+      title: Text(when),
+      subtitle: Text(_size(file)),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton(
+            onPressed: _busy ? null : () => _shareBackup(file),
+            child: const Text('分享'),
+          ),
+          TextButton(
+            onPressed: _busy ? null : () => _restoreFrom(file),
+            child: const Text('恢复'),
           ),
         ],
       ),

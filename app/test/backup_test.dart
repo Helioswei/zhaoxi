@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:zhaoxi/data/dao/settings_dao.dart';
 import 'package:zhaoxi/data/db/database.dart';
 import 'package:zhaoxi/services/backup_service.dart';
 import 'package:zhaoxi/services/export_service.dart';
@@ -54,5 +55,17 @@ void main() {
     expect(files.length, BackupService.keep);
     // 最新的排在最前
     expect(files.first.path, contains('20261001-'));
+  });
+
+  test('数据没变时不再新增自动备份（去重）', () async {
+    final first = await backup.runIfNeeded(now: DateTime(2026, 10, 1, 9));
+    expect(first, isNotNull);
+    expect((await backup.listBackups()).length, 1);
+
+    // 假装新的一天（清掉"今天已备份"的标记）
+    await db.settingsDao.set(SettingsKeys.lastBackupDate, '2026-09-30');
+    final second = await backup.runIfNeeded(now: DateTime(2026, 10, 2, 9));
+    expect(second, isNull, reason: '内容没变，不应新增');
+    expect((await backup.listBackups()).length, 1);
   });
 }
