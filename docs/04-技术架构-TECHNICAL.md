@@ -287,6 +287,13 @@ flutter build apk --release          # 或 --split-per-abi 减小体积
 ```
 侧载安装（允许"未知来源"）。可自建静态目录放 APK，手机浏览器下载。
 
+### Android 签名
+
+- 本地：`app/android/key.properties`（已 gitignore）指向 `~/AIWork/.zhaoxi-signing/zhaoxi-release.jks`；
+- CI：secrets `ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD`；
+- 未配置时退回 debug 签名（仅够自测）。
+- ⚠️ **换签名后旧版无法覆盖安装**：先导出 JSON → 卸载 → 装新版 → 导入。
+
 ### macOS
 
 ```bash

@@ -97,7 +97,7 @@
 | T-8 | 备份导入时可选「按清单/时间范围过滤」（当前是全量合并/覆盖） | — |
 | **T-9** | **「分享到朝夕」导入**（ACTION_SEND/VIEW 接收 .json）：彻底绕开系统文件选择器 | 见下 |
 | T-3 | 真机验收清单剩余项：通知到点、精确闹钟授权、月报 PDF 中文 | 需真机 |
-| T-4 | release 包换正式签名密钥（当前用调试密钥，仅够侧载） | 长期分发前 |
+| T-4 | ~~release 包换正式签名密钥~~ | ✅ 已生成 `zhaoxi-release.jks`（CN=Zhaoxi），本地与 CI 均使用 |
 | T-5 | 重复任务补「每 N 天」的 UI 入口（`RepeatRule.everyDays` 已实现，编辑页暂未暴露） | — |
 | T-6 | 回收站页显示"还剩几天过期" | — |
 | T-7 | 搜索支持按清单分组显示结果 / 高亮关键词 | — |
@@ -123,7 +123,8 @@
 
 | 日期 | 决策 |
 |---|---|
-| 2026-10-18 | **GitHub Actions**：push/手动构建 Android+macOS 产物；打 tag 自动 Release；Android 用 secret keystore 保持签名一致 |
+| 2026-10-18 | **GitHub Actions**：push/手动构建 Android+macOS 产物；打 tag 自动 Release |
+| 2026-10-18 | **改用正式 release 签名**（CN=Zhaoxi）；密钥在 `~/AIWork/.zhaoxi-signing/`，CI 用 4 个 secrets 注入 |
 | 2026-10-18 | **移除语音输入**（依赖系统识别、部分机型不可用）；删除麦克风/联网权限，App 纯离线 |
 | 2026-10-12 | 导出拆为「导出」弹层（4 控件 + 折叠高级项）+「备份与恢复」独立页（方案 B） |
 | 2026-10-12 | 导出格式：PDF / Word / Excel / Markdown / 文字（复制）；分组按范围自动决定 |

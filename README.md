@@ -75,10 +75,9 @@ zhaoxi/
 | 手动 Run workflow | 同上 |
 | 打 tag（`v1.0.0`） | 自动创建 GitHub Release，并把 APK / macOS 包挂上去 |
 
-> **签名**：Android 包用与本地相同的 `debug.keystore` 签名，才能「覆盖升级、数据不丢」。
-> 首次使用需在 **Settings → Secrets and variables → Actions** 新增
-> `ANDROID_DEBUG_KEYSTORE_BASE64`，值为本地 `~/.android/debug.keystore` 的 base64：
-> `base64 -i ~/.android/debug.keystore | pbcopy`
+> **签名**：Android 用固定的 release keystore（`android/key.properties` → `~/AIWork/.zhaoxi-signing/zhaoxi-release.jks`，已 gitignore）。
+> CI 通过 4 个 secrets 注入：`ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`。
+> ⚠️ **换签名后旧版无法覆盖升级**：先导出 JSON 备份 → 卸载旧版 → 安装新版 → 导入备份。
 
 ## 开源协议
 
