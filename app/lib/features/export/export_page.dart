@@ -35,7 +35,6 @@ class _ExportPageState extends ConsumerState<ExportPage> {
   String? _listId;
   DateTime? _customFrom;
   DateTime? _customTo;
-  bool _moreOpen = false;
   bool _busy = false;
 
   @override
@@ -178,57 +177,32 @@ class _ExportPageState extends ConsumerState<ExportPage> {
           ),
 
           _label('格式'),
-          _pills<ExportFormat>(
-            values: const [
-              ExportFormat.pdf,
-              ExportFormat.word,
-              ExportFormat.xlsx,
-              ExportFormat.markdown,
-              ExportFormat.text,
-            ],
-            selected: _format,
-            label: (v) => v == ExportFormat.text ? '文字（复制）' : v.label,
-            onSelect: (v) => setState(() => _format = v),
-          ),
-
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () => setState(() => _moreOpen = !_moreOpen),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Icon(
-                    _moreOpen ? Icons.expand_less : Icons.expand_more,
-                    size: 20,
-                    color: context.colors.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '更多选项',
-                    style: TextStyle(color: context.colors.onSurfaceVariant),
-                  ),
-                ],
+          _formatRow(),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'MD = Markdown 文件 · 复制 = 拷到剪贴板',
+              style: TextStyle(
+                fontSize: 12,
+                color: context.colors.onSurfaceVariant,
               ),
             ),
           ),
-          if (_moreOpen) ...[
-            _label('内容'),
-            _pills<ExportContent>(
-              values: ExportContent.values,
-              selected: _content,
-              label: (v) => v.label,
-              onSelect: (v) => setState(() => _content = v),
-            ),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _includeDeleted,
-              onChanged: (v) => setState(() => _includeDeleted = v ?? false),
-              title: const Text('包含已删除（回收站）'),
-              subtitle: const Text('在末尾加一节「已删除」'),
-            ),
-          ],
+
+          _label('内容'),
+          _pills<ExportContent>(
+            values: ExportContent.values,
+            selected: _content,
+            label: (v) => v.label,
+            onSelect: (v) => setState(() => _content = v),
+          ),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _includeDeleted,
+            onChanged: (v) => setState(() => _includeDeleted = v ?? false),
+            title: const Text('包含已删除（回收站）'),
+            subtitle: const Text('在末尾加一节「已删除」'),
+          ),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -310,6 +284,59 @@ class _ExportPageState extends ConsumerState<ExportPage> {
         _customTo = picked;
       }
     });
+  }
+
+  /// 格式：5 个等宽分段，一行放得下。
+  Widget _formatRow() {
+    const values = [
+      ExportFormat.pdf,
+      ExportFormat.word,
+      ExportFormat.xlsx,
+      ExportFormat.markdown,
+      ExportFormat.text,
+    ];
+    return Row(
+      children: [
+        for (var i = 0; i < values.length; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          Expanded(child: _formatSegment(values[i])),
+        ],
+      ],
+    );
+  }
+
+  Widget _formatSegment(ExportFormat v) {
+    final t = context.tokens;
+    final selected = _format == v;
+    return Material(
+      color: selected ? t.chipSelectedBg : Colors.transparent,
+      shape: const StadiumBorder(),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: () => setState(() => _format = v),
+        child: SizedBox(
+          height: 38,
+          child: Center(
+            child: Text(
+              switch (v) {
+                ExportFormat.pdf => 'PDF',
+                ExportFormat.word => 'Word',
+                ExportFormat.xlsx => 'Excel',
+                ExportFormat.markdown => 'MD',
+                ExportFormat.text => '复制',
+              },
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                color: selected ? t.primary : t.textSecondary,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _label(String text) => Padding(
