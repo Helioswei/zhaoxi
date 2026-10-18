@@ -3,11 +3,11 @@ name: build
 on:
   push:
     branches: [main]
+    tags: ['v*']
     paths:
       - 'app/**'
       - '.github/workflows/build.yml'
   pull_request:
-  tags: ['v*']
   workflow_dispatch:
 
 permissions:
