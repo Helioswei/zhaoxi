@@ -79,7 +79,7 @@
 | 2.1 | `SpeechService`（状态机 idle/listening/error） | US-002/026 | P0 | ✅ |
 | 2.2 | 麦克风权限流程（Android + macOS entitlements） | US-002 | P0 | ✅（Android manifest + macOS Info.plist/entitlements 已配） |
 | 2.3 | 编辑页 🎤（实时回填标题） | US-002 | P0 | ✅ |
-| 2.4 | **首页快捷 🎤（按住说/松手建；桌面点击开关）** | US-026 | P0 | ✅ |
+| 2.4 | **首页快捷 🎤（点击开始 / 点击结束；静音自动结束）** | US-026 | P0 | ✅ |
 | 2.5 | 失败降级文案（无权限/无引擎/无网/空结果） | US-002 | P0 | ✅ |
 | 2.6 | Android 真机 + macOS 桌面分别验证 | — | P0 | ⏳ Android 待真机；macOS 待 Xcode |
 
