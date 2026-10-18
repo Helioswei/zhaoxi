@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/app_providers.dart';
+import '../export/monthly_report_sheet.dart';
 import '../../services/notification_service.dart';
 import '../../ui/theme/app_theme.dart';
 
@@ -174,10 +175,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const Divider(),
           _section(context, '数据'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: FilledButton.icon(
+                onPressed: () => openMonthlyReportSheet(context),
+                icon: const Icon(Icons.description_outlined),
+                label: const Text('导出月报'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
           ListTile(
-            leading: const Icon(Icons.ios_share),
-            title: const Text('导出 / 备份'),
-            subtitle: const Text('导出月报（Markdown/PDF）或全量备份（JSON），也可导入恢复'),
+            leading: const Icon(Icons.backup_outlined),
+            title: const Text('备份与恢复'),
+            subtitle: const Text('全量 JSON 备份 / 从备份恢复'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).pushNamed('/export'),
           ),
