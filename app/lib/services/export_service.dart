@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../data/db/database.dart';
 import '../data/json/backup_json.dart';
 import '../domain/export_options.dart';
+import 'office_builder.dart';
 
 class ExportBundle {
   ExportBundle({
@@ -263,6 +264,87 @@ class ExportService {
       ));
     }
     return widgets;
+  }
+
+  // ------------------------------------------------------------- Word / Excel
+
+  Future<Uint8List> toDocx(ExportBundle b, {DateTime? now}) async {
+    final lines = <DocLine>[
+      DocLine(DocStyle.title, _title(b)),
+      DocLine(
+        DocStyle.meta,
+        '范围：${_d(b.from)} ~ ${_d(_lastDay(b.to))}　清单：${_listLabel(b)}'
+        '　导出：${_dt(now ?? DateTime.now())}',
+      ),
+    ];
+
+    _docxSection(lines, b, '已完成（${b.done.length} 项）', b.done, completed: true);
+    if (b.open.isNotEmpty) {
+      _docxSection(lines, b, '未完成 / 结转（${b.open.length} 项）', b.open,
+          completed: false);
+    }
+    if (b.deleted.isNotEmpty) {
+      lines.add(DocLine(DocStyle.h2, '已删除（${b.deleted.length} 项）'));
+      for (final t in b.deleted) {
+        lines.add(DocLine(
+          DocStyle.bullet,
+          '${t.title}（删除于 ${_d(DateTime.fromMillisecondsSinceEpoch(t.updatedAt))}）',
+        ));
+      }
+    }
+    return buildDocx(lines);
+  }
+
+  void _docxSection(
+    List<DocLine> lines,
+    ExportBundle b,
+    String heading,
+    List<Task> tasks, {
+    required bool completed,
+  }) {
+    lines.add(DocLine(DocStyle.h2, heading));
+    if (tasks.isEmpty) {
+      lines.add(const DocLine(DocStyle.meta, '（没有记录）'));
+      return;
+    }
+    final sorted = [...tasks]
+      ..sort((x, y) => _stamp(x, completed).compareTo(_stamp(y, completed)));
+    String? currentKey;
+    for (final t in sorted) {
+      final stamp = _stamp(t, completed);
+      final key = _groupKey(b, b.options.grouping, stamp);
+      if (key != null && key != currentKey) {
+        lines.add(DocLine(DocStyle.h3, key));
+        currentKey = key;
+      }
+      lines.add(DocLine(
+        DocStyle.bullet,
+        '${t.title}（${_d(DateTime.fromMillisecondsSinceEpoch(stamp))}）',
+      ));
+      if ((t.note ?? '').isNotEmpty) {
+        lines.add(DocLine(DocStyle.note, t.note!));
+      }
+    }
+  }
+
+  Future<Uint8List> toXlsx(ExportBundle b, {DateTime? now}) async {
+    String listName(Task t) => b.lists[t.listId]?.name ?? '';
+    String day(int? ms) =>
+        ms == null ? '' : _d(DateTime.fromMillisecondsSinceEpoch(ms));
+
+    final rows = <List<String>>[
+      const ['状态', '日期', '标题', '清单', '备注'],
+    ];
+    for (final t in b.done) {
+      rows.add(['已完成', day(t.completedAt ?? t.updatedAt), t.title, listName(t), t.note ?? '']);
+    }
+    for (final t in b.open) {
+      rows.add(['未完成', day(t.dueAt ?? t.updatedAt), t.title, listName(t), t.note ?? '']);
+    }
+    for (final t in b.deleted) {
+      rows.add(['已删除', day(t.updatedAt), t.title, listName(t), t.note ?? '']);
+    }
+    return buildXlsx(sheetName: '记录', rows: rows);
   }
 
   // -------------------------------------------------------------------- JSON

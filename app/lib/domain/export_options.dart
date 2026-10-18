@@ -30,12 +30,17 @@ enum ExportGrouping {
 }
 
 enum ExportFormat {
-  markdown('Markdown'),
   pdf('PDF'),
-  json('JSON');
+  word('Word'),
+  xlsx('Excel'),
+  markdown('Markdown'),
+  text('文字');
 
   const ExportFormat(this.label);
   final String label;
+
+  /// 需要生成文件（否则是复制到剪贴板）。
+  bool get isFile => this != ExportFormat.text;
 }
 
 /// 一次导出的参数：范围 × 清单 × 内容 × 分组。
@@ -70,7 +75,7 @@ class ExportOptions {
         preset: ExportRangePreset.thisMonth,
         content: ExportContent.doneOnly,
         grouping: ExportGrouping.week,
-        format: ExportFormat.markdown,
+        format: ExportFormat.pdf,
         listId: workListId,
       );
 

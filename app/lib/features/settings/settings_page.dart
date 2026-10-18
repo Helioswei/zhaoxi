@@ -175,19 +175,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const Divider(),
           _section(context, '数据'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: FilledButton.icon(
-                onPressed: () => openMonthlyReportSheet(context),
-                icon: const Icon(Icons.description_outlined),
-                label: const Text('导出月报'),
-              ),
-            ),
+          ListTile(
+            leading: const Icon(Icons.description_outlined),
+            title: const Text('导出'),
+            subtitle: const Text('PDF / Word / Excel / Markdown / 文字'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => openMonthlyReportSheet(context),
           ),
-          const SizedBox(height: 6),
           ListTile(
             leading: const Icon(Icons.backup_outlined),
             title: const Text('备份与恢复'),

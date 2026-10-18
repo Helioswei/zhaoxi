@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:archive/archive.dart';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -285,5 +287,36 @@ void main() {
     expect(withDeleted.deleted.map((t) => t.title), ['删掉的']);
     expect(export.toMarkdown(withDeleted, now: now),
         contains('## 已删除（1 项）'));
+  });
+
+  test('Word / Excel 能生成可解压的 OOXML 包', () async {
+    await addTask(
+        id: 'a',
+        title: '完成方案评审',
+        listId: 'list-work',
+        completedAt: inMonth,
+        note: '与 A 方确认预算');
+
+    final bundle = await export.collectRange(
+      const ExportOptions(preset: ExportRangePreset.thisMonth),
+      now: now,
+    );
+
+    final docx = await export.toDocx(bundle, now: now);
+    final z1 = ZipDecoder().decodeBytes(docx);
+    expect(z1.files.map((f) => f.name), contains('word/document.xml'));
+    final docXml =
+        utf8.decode(z1.findFile('word/document.xml')!.content as List<int>);
+    expect(docXml, contains('完成方案评审'));
+    expect(docXml, contains('记录'));
+
+    final xlsx = await export.toXlsx(bundle, now: now);
+    final z2 = ZipDecoder().decodeBytes(xlsx);
+    expect(z2.files.map((f) => f.name), contains('xl/workbook.xml'));
+    expect(z2.files.map((f) => f.name), contains('xl/worksheets/sheet1.xml'));
+    final sheetXml = utf8.decode(
+        z2.findFile('xl/worksheets/sheet1.xml')!.content as List<int>);
+    expect(sheetXml, contains('完成方案评审'));
+    expect(sheetXml, contains('已完成'));
   });
 }
