@@ -116,13 +116,12 @@ CREATE INDEX idx_tasks_sort_order   ON tasks(sort_order);
 | `font_scale` | `normal` | normal/large |
 | `default_remind_offset` | `0` | 提前分钟数 |
 | `date_only_remind_time` | `09:00` | 日期型默认提醒时刻 |
-| `speech_locale` | `zh_CN` | |
 | **`default_view`** | `today` | 默认打开的视图（首次进入） |
 | **`view_order`** | `["today","tomorrow","week","month","later","undated","all","done"]` | 视图顺序 |
 | **`view_hidden`** | `[]` | 被隐藏的视图 id（不含 all/done） |
 | **`view_labels`** | `{}` | 重命名覆盖，如 `{"week":"这周"}` |
 | **`active_list_filter`** | `all` | 上次选中的清单筛选 |
-| **`last_used_list`** | `life` | 新建任务默认清单（筛选为「全部」时用） |
+| **`last_used_list`** | `work` | 仅记录上次保存的清单（当前不参与默认值；默认固定「工作」） |
 | `last_backup_date` | NULL | |
 | `backup_dir` | NULL | 展示路径 |
 | `backup_dir_bookmark` | NULL | macOS bookmark（base64） |

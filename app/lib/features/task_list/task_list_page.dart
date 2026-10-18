@@ -8,7 +8,6 @@ import '../../domain/view_kind.dart';
 import '../../providers/app_providers.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/widgets/app_pill.dart';
-import '../quick_voice/quick_voice_button.dart';
 import '../task_edit/task_edit_sheet.dart';
 import 'task_tile.dart';
 
@@ -100,22 +99,14 @@ class _TaskListPageState extends ConsumerState<TaskListPage> {
               ),
             ],
           ),
-          floatingActionButton: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const QuickVoiceButton(),
-              const SizedBox(height: 12),
-              FloatingActionButton(
-                heroTag: 'add',
-                tooltip: '新建任务（⌘N）',
-                shape: const CircleBorder(),
-                backgroundColor: context.colors.primary,
-                foregroundColor: Colors.white,
-                onPressed: () => openTaskEditSheet(context),
-                child: const Icon(Icons.add),
-              ),
-            ],
+          floatingActionButton: FloatingActionButton(
+            heroTag: 'add',
+            tooltip: '新建任务（⌘N）',
+            shape: const CircleBorder(),
+            backgroundColor: context.colors.primary,
+            foregroundColor: Colors.white,
+            onPressed: () => openTaskEditSheet(context),
+            child: const Icon(Icons.add),
           ),
         ),
       ),

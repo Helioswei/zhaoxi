@@ -8,12 +8,6 @@
 	<true/>
 	<key>com.apple.security.network.server</key>
 	<true/>
-	<!-- 语音输入（缺了麦克风直接失败，见 04 §5.2） -->
-	<key>com.apple.security.device.audio-input</key>
-	<true/>
-	<!-- 系统语音识别可能联网 -->
-	<key>com.apple.security.network.client</key>
-	<true/>
 	<!-- 导出 / 自动备份目录 -->
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>

@@ -15,7 +15,6 @@
 | **本地数据库** | **Drift**（SQLite 之上） | 类型安全、可写 SQL、支持迁移；`sqlite3_flutter_libs` 提供全平台原生库 |
 | **状态管理** | **Riverpod** | 轻量、可测试（若要与 yijing-app 一致则用 Provider，二选一在 M0 定） |
 | **路由** | `Navigator` + 少量命名路由 | 页面少，无需 go_router |
-| **语音识别** | `speech_to_text` | 调用各平台**系统**识别，不自建 ASR |
 | **本地通知** | `flutter_local_notifications` + `timezone` + `flutter_timezone` | 定时投递；需本地时区；无需服务器 |
 | **导出 PDF** | `pdf` + `printing` | 纯 Dart 生成；`printing` 提供保存/分享 |
 | **文件/分享** | `share_plus`、`file_picker`、`path_provider` | **导出落盘到用户可见位置的关键** |
@@ -53,7 +52,7 @@
 ┌───────────────┐  ┌──────────────────────────────┐
 │  服务层        │  │  数据层 (data/)               │
 │  services/     │─▶│  Drift 数据库 + DAO + Repo    │
-│  语音/通知/     │  │  （唯一直接读写 DB 的地方）     │
+│  通知/导出/     │  │  （唯一直接读写 DB 的地方）     │
 │  导出/备份      │  └──────────────────────────────┘
 └───────────────┘
         ▲
@@ -97,13 +96,12 @@ zhaoxi/
 │   │   │   ├── repeat_rule.dart   # 重复规则（P1）
 │   │   │   └── date_parser.dart   # 自然语言时间（P2）
 │   │   ├── features/
-│   │   │   ├── task_list/         # 首页 + 视图切换 + 清单筛选 + 条目 + 快捷语音
+│   │   │   ├── task_list/         # 首页 + 视图切换 + 清单筛选 + 条目
 │   │   │   ├── task_edit/         # 新建/编辑/详情（同一弹层）
 │   │   │   ├── list_manage/       # 清单管理（工作/生活）
 │   │   │   ├── settings/          # 含视图管理
 │   │   │   └── export/
 │   │   ├── services/
-│   │   │   ├── speech_service.dart
 │   │   │   ├── notification_service.dart
 │   │   │   ├── export_service.dart
 │   │   │   └── backup_service.dart
@@ -154,8 +152,6 @@ zhaoxi/
 | `POST_NOTIFICATIONS` | Manifest | 首次排程提醒 | 提示条引导开启 |
 | `SCHEDULE_EXACT_ALARM` | Manifest | 首次排程精确提醒，跳系统设置 | 用 `AndroidScheduleMode.inexactAllowWhileIdle` |
 | `RECEIVE_BOOT_COMPLETED` | Manifest | 安装即声明 | 重启后由 App 启动时重排 |
-| `INTERNET` | Manifest | 安装即声明（语音需要） | 无网时语音不可用 |
-| `RECORD_AUDIO`（麦克风） | Manifest（运行时） | 首次语音 | 提示手动输入 |
 
 **通知渠道**：`main.dart` 初始化时创建，id=`tasks`，importance high。**API 26+ 不建渠道则通知不显示。**
 
@@ -168,8 +164,6 @@ macOS 沙盒下，`Info.plist` 声明**不够**，还必须在 `*.entitlements` 
 | 文件 | 键 | 用途 |
 |---|---|---|
 | `DebugProfile.entitlements` / `Release.entitlements` | `com.apple.security.app-sandbox` | 沙盒（默认开） |
-| 同上 | `com.apple.security.device.audio-input` | **麦克风，缺了语音直接失败** |
-| 同上 | `com.apple.security.network.client` | 语音识别可能联网 |
 | 同上 | `com.apple.security.files.user-selected.read-write` | 用户选定的导出/备份目录 |
 | 同上 | `com.apple.security.files.bookmarks.app-scope` | 持久化目录授权 |
 
@@ -206,27 +200,11 @@ macOS 沙盒下，`Info.plist` 声明**不够**，还必须在 `*.entitlements` 
 
 ---
 
-## 七、语音输入实现
+## 七、语音输入（已取消）
 
-```
-SpeechService（状态机：idle / listening / error）
-  └─ start()
-       ├─ permission_handler 请求麦克风
-       ├─ speech_to_text.initialize()
-       ├─ listen(onResult: 回填标题)
-       └─ stop() / cancel()
-```
-
-| 平台 | 底层 | 前置 |
-|---|---|---|
-| Android | `SpeechRecognizer`（通常 Google 语音，**联网**） | Manifest 麦克风 + INTERNET |
-| macOS | `SFSpeechRecognizer` | entitlements（麦克风 + network.client）+ Info.plist 两项用途说明 |
-
-**降级**：不可用 / 无权限 / 空结果 → 明确中文提示，手动输入永远可用。
-
-**测试**：语音难自动化，只测 `SpeechService` 的状态封装，不测识别质量。
-
----
+2026-10-18 移除。原因：Android 上依赖系统 `SpeechRecognizer`（不少国产 ROM 没有），
+且 `initialize()` 在无服务时会抛异常。现已删除 `speech_to_text`、`permission_handler` 依赖，
+并从 Manifest 去掉 `RECORD_AUDIO` / `INTERNET` 与识别服务可见性，App 变为**纯离线**。
 
 ## 八、提醒通知
 
@@ -328,7 +306,7 @@ flutter build macos --release        # build/macos/Build/Products/Release/*.app
 |---|---|
 | 单元测试 | **时区日界计算**（东八区跨日）、重复规则、导出/导入往返一致、视图筛选与排序、`exportFormatVersion` 升降级、sort_order 重排 |
 | Widget 测试 | 新建流程、完成/撤销、空状态、标题字素簇上限 |
-| 手动测试清单 | 通知到点是否触发（真机）、Android 14 精确闹钟授权流程、语音权限流程、导出文件能打开、macOS 备份目录重启后仍可写、杀进程后数据仍在 |
+| 手动测试清单 | 通知到点是否触发（真机）、Android 14 精确闹钟授权流程、导出文件能打开、macOS 备份目录重启后仍可写、杀进程后数据仍在 |
 
 `flutter analyze` 必须零 warning。
 

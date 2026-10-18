@@ -5,10 +5,8 @@ import '../../data/dao/list_dao.dart';
 import '../../data/db/database.dart';
 import '../../domain/day_boundary.dart';
 import '../../domain/repeat_rule.dart';
-import '../../domain/speech_text.dart';
 import '../../providers/app_providers.dart';
 import '../../services/notification_service.dart';
-import '../../services/speech_service.dart';
 import '../../ui/snack.dart';
 import '../../ui/theme/app_theme.dart';
 
@@ -42,7 +40,6 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
   late int _offsetMinutes;
   bool _noteOpen = false;
   bool _saving = false;
-  String _baseText = '';
   RepeatRule? _repeat;
 
   bool get _isEditing => widget.task != null;
@@ -53,7 +50,9 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     final t = widget.task;
     _title = TextEditingController(text: t?.title ?? '');
     _note = TextEditingController(text: t?.note ?? '');
-    _listId = t?.listId ?? ref.read(selectedListIdProvider) ?? kFallbackListId;
+    _listId = t?.listId ??
+        ref.read(selectedListIdProvider) ??
+        kDefaultNewTaskListId;
     _dueAt = t?.dueAt ?? planDateOnly(DayBounds().todayStart).dueAt;
     _dueHasTime = t?.dueHasTime ?? false;
     _noteOpen = (t?.note ?? '').isNotEmpty;
@@ -71,41 +70,9 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
 
   @override
   void dispose() {
-    SpeechService.instance.removeListener(_onSpeech);
     _title.dispose();
     _note.dispose();
     super.dispose();
-  }
-
-  Future<void> _toggleMic() async {
-    final svc = SpeechService.instance;
-    if (svc.isListening) {
-      await svc.stop();
-      return;
-    }
-    final error = await svc.start();
-    if (error != null) {
-      if (mounted) showInfoSnack(context, error);
-      return;
-    }
-    _baseText = _title.text;
-    svc.addListener(_onSpeech);
-  }
-
-  /// 识别到的文字实时回填标题；识别结束时解绑。
-  void _onSpeech() {
-    final svc = SpeechService.instance;
-    if (!svc.isListening) {
-      svc.removeListener(_onSpeech);
-      return;
-    }
-    final merged = mergeDictation(_baseText, svc.words);
-    if (merged != _title.text) {
-      _title.value = TextEditingValue(
-        text: merged,
-        selection: TextSelection.collapsed(offset: merged.length),
-      );
-    }
   }
 
   static int _baseRemindAt(int dueAt, bool dueHasTime) => dueHasTime
@@ -261,23 +228,11 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
                       maxLength: 200,
                       style: const TextStyle(fontSize: 18),
                       decoration: const InputDecoration(
-                        hintText: '输入或点 🎤 说话…',
+                        hintText: '输入标题…',
                         counterText: '',
                       ),
                       onSubmitted: (_) => _save(),
                     ),
-                  ),
-                  AnimatedBuilder(
-                    animation: SpeechService.instance,
-                    builder: (context, _) {
-                      final listening = SpeechService.instance.isListening;
-                      return IconButton(
-                        tooltip: listening ? '停止' : '语音输入',
-                        color: listening ? context.colors.error : null,
-                        onPressed: _toggleMic,
-                        icon: Icon(listening ? Icons.mic : Icons.mic_none),
-                      );
-                    },
                   ),
                 ],
               ),

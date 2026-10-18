@@ -11,8 +11,11 @@ const kBuiltinLists = <({String id, String name, String color, int order})>[
   (id: 'list-life', name: '生活', color: '#3B7A6E', order: 1),
 ];
 
-/// 没有可用清单时的兜底（见 02 §2.3）。
+/// 删除自定义清单时，任务默认归入的清单（见 02 §2.3）。
 const kFallbackListId = 'list-life';
+
+/// 新建任务时的默认清单：没有筛选、也没用过任何清单时用它。
+const kDefaultNewTaskListId = 'list-work';
 
 @DriftAccessor(tables: [TaskLists])
 class ListDao extends DatabaseAccessor<AppDatabase> with _$ListDaoMixin {
