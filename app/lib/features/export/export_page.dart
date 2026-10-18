@@ -177,7 +177,24 @@ class _ExportPageState extends ConsumerState<ExportPage> {
           ),
 
           _label('格式'),
-          _formatRow(),
+          _pills<ExportFormat>(
+            values: const [
+              ExportFormat.pdf,
+              ExportFormat.word,
+              ExportFormat.xlsx,
+              ExportFormat.markdown,
+              ExportFormat.text,
+            ],
+            selected: _format,
+            label: (v) => switch (v) {
+              ExportFormat.pdf => 'PDF',
+              ExportFormat.word => 'Word',
+              ExportFormat.xlsx => 'Excel',
+              ExportFormat.markdown => 'MD',
+              ExportFormat.text => '复制',
+            },
+            onSelect: (v) => setState(() => _format = v),
+          ),
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
@@ -196,12 +213,12 @@ class _ExportPageState extends ConsumerState<ExportPage> {
             label: (v) => v.label,
             onSelect: (v) => setState(() => _content = v),
           ),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _includeDeleted,
-            onChanged: (v) => setState(() => _includeDeleted = v ?? false),
-            title: const Text('包含已删除（回收站）'),
-            subtitle: const Text('在末尾加一节「已删除」'),
+          _label('已删除'),
+          _pills<bool>(
+            values: const [false, true],
+            selected: _includeDeleted,
+            label: (v) => v ? '包含' : '不包含',
+            onSelect: (v) => setState(() => _includeDeleted = v),
           ),
         ],
       ),
@@ -284,59 +301,6 @@ class _ExportPageState extends ConsumerState<ExportPage> {
         _customTo = picked;
       }
     });
-  }
-
-  /// 格式：5 个等宽分段，一行放得下。
-  Widget _formatRow() {
-    const values = [
-      ExportFormat.pdf,
-      ExportFormat.word,
-      ExportFormat.xlsx,
-      ExportFormat.markdown,
-      ExportFormat.text,
-    ];
-    return Row(
-      children: [
-        for (var i = 0; i < values.length; i++) ...[
-          if (i > 0) const SizedBox(width: 6),
-          Expanded(child: _formatSegment(values[i])),
-        ],
-      ],
-    );
-  }
-
-  Widget _formatSegment(ExportFormat v) {
-    final t = context.tokens;
-    final selected = _format == v;
-    return Material(
-      color: selected ? t.chipSelectedBg : Colors.transparent,
-      shape: const StadiumBorder(),
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: () => setState(() => _format = v),
-        child: SizedBox(
-          height: 38,
-          child: Center(
-            child: Text(
-              switch (v) {
-                ExportFormat.pdf => 'PDF',
-                ExportFormat.word => 'Word',
-                ExportFormat.xlsx => 'Excel',
-                ExportFormat.markdown => 'MD',
-                ExportFormat.text => '复制',
-              },
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                color: selected ? t.primary : t.textSecondary,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _label(String text) => Padding(
