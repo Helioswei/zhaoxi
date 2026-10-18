@@ -55,7 +55,12 @@ class _QuickVoiceButtonState extends ConsumerState<QuickVoiceButton> {
 
   Future<void> _start() async {
     if (_dialogOpen) return;
-    final error = await SpeechService.instance.start();
+    String? error;
+    try {
+      error = await SpeechService.instance.start();
+    } catch (_) {
+      error = '语音暂时不可用，请手动输入';
+    }
     if (error != null) {
       if (mounted) showInfoSnack(context, error);
       return;

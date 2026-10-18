@@ -45,21 +45,25 @@ class SpeechService extends ChangeNotifier {
     _state = SpeechState.listening;
     notifyListeners();
 
-    await _speech.listen(
-      onResult: (SpeechRecognitionResult result) {
-        _words = result.recognizedWords;
-        notifyListeners();
-      },
-      listenOptions: SpeechListenOptions(
-        partialResults: true,
-        listenMode: ListenMode.dictation,
-        localeId: 'zh_CN',
-        cancelOnError: true,
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 5),
-      ),
-    );
-    return null;
+    try {
+      await _speech.listen(
+        onResult: (SpeechRecognitionResult result) {
+          _words = result.recognizedWords;
+          notifyListeners();
+        },
+        listenOptions: SpeechListenOptions(
+          partialResults: true,
+          listenMode: ListenMode.dictation,
+          localeId: 'zh_CN',
+          cancelOnError: true,
+          listenFor: const Duration(seconds: 30),
+          pauseFor: const Duration(seconds: 5),
+        ),
+      );
+      return null;
+    } catch (_) {
+      return _fail('这台设备暂时用不了语音识别，请手动输入');
+    }
   }
 
   /// 结束识别，返回识别到的文本（已 trim）。
@@ -93,20 +97,26 @@ class SpeechService extends ChangeNotifier {
 
   Future<bool> _ensureInitialized() async {
     if (_initialized) return true;
-    final ok = await _speech.initialize(
-      onError: (SpeechRecognitionError error) {
-        _fail(_messageFor(error.errorMsg));
-      },
-      onStatus: (status) {
-        if ((status == 'done' || status == 'notListening') &&
-            _state == SpeechState.listening) {
-          _state = SpeechState.idle;
-          notifyListeners();
-        }
-      },
-    );
-    _initialized = ok;
-    return ok;
+    try {
+      final ok = await _speech.initialize(
+        onError: (SpeechRecognitionError error) {
+          _fail(_messageFor(error.errorMsg));
+        },
+        onStatus: (status) {
+          if ((status == 'done' || status == 'notListening') &&
+              _state == SpeechState.listening) {
+            _state = SpeechState.idle;
+            notifyListeners();
+          }
+        },
+      );
+      _initialized = ok;
+      return ok;
+    } catch (_) {
+      // 某些设备没有识别服务时，initialize 会直接抛 PlatformException
+      _initialized = false;
+      return false;
+    }
   }
 
   String? _fail(String message) {
