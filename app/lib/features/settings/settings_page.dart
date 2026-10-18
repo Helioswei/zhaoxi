@@ -199,7 +199,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _section(context, '关于'),
           const ListTile(
             title: Text('版本'),
-            subtitle: Text('0.1.0 · MVP（M0–M3）'),
+            subtitle: const Text('1.0.0'),
           ),
           const ListTile(
             title: Text('数据'),
