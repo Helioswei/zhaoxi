@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#3B7A6E</color>
+    <!-- 启动屏：温润（默认风格）的奶油纸底 -->
+    <color name="launch_cream">#FBF8F3</color>
 </resources>

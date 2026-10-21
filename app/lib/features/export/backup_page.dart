@@ -31,6 +31,7 @@ class BackupPage extends ConsumerStatefulWidget {
 class _BackupPageState extends ConsumerState<BackupPage> {
   bool _busy = false;
   bool _showAll = false;
+  bool _loadFailed = false;
   List<File> _backups = const [];
 
   @override
@@ -40,16 +41,19 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   }
 
   Future<void> _refreshBackups() async {
+    setState(() => _loadFailed = false);
     try {
       final files = await ref.read(backupServiceProvider).listBackups();
       if (!mounted) return;
       setState(() => _backups = files);
-    } catch (_) {
-      // 列不出来就不显示
+    } catch (e) {
+      debugPrint('listBackups failed: $e');
+      if (mounted) setState(() => _loadFailed = true);
     }
   }
 
   String get _backupSummary {
+    if (_loadFailed) return '列表读取失败';
     if (_backups.isEmpty) return '还没有备份';
     final when = DateFormat('yyyy-MM-dd HH:mm')
         .format(_backups.first.statSync().modified);
@@ -80,7 +84,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
         await shareBytes(fileName: _jsonName, bytes: bytes);
       }
     } catch (e) {
-      if (mounted) showInfoSnack(context, '导出失败：$e');
+      debugPrint('export backup failed: $e');
+      if (mounted) showInfoSnack(context, '导出失败，再试一次');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -93,7 +98,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
         bytes: await file.readAsBytes(),
       );
     } catch (e) {
-      if (mounted) showInfoSnack(context, '分享失败：$e');
+      debugPrint('share backup failed: $e');
+      if (mounted) showInfoSnack(context, '分享失败，再试一次');
     }
   }
 
@@ -171,7 +177,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
     } on ImportException catch (e) {
       if (mounted) showInfoSnack(context, e.message);
     } catch (e) {
-      if (mounted) showInfoSnack(context, '导入失败：$e');
+      debugPrint('import failed: $e');
+      if (mounted) showInfoSnack(context, '导入失败，再试一次');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -184,7 +191,8 @@ class _BackupPageState extends ConsumerState<BackupPage> {
       await _refreshBackups();
       if (mounted) showInfoSnack(context, '已备份到本机');
     } catch (e) {
-      if (mounted) showInfoSnack(context, '备份失败：$e');
+      debugPrint('backup failed: $e');
+      if (mounted) showInfoSnack(context, '备份失败，再试一次');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -207,8 +215,17 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               height: 50,
               child: FilledButton.icon(
                 onPressed: _busy ? null : () => _exportJson(toFile: false),
-                icon: const Icon(Icons.ios_share),
-                label: const Text('分享备份文件（JSON）'),
+                icon: _busy
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      )
+                    : const Icon(Icons.ios_share),
+                label: Text(_busy ? '正在处理…' : '分享备份文件（JSON）'),
               ),
             ),
           ),
@@ -264,7 +281,28 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               ),
             ),
           ),
-          if (_backups.isNotEmpty) ...[
+          if (_loadFailed)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_outlined,
+                      size: 18, color: context.colors.error),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      '备份列表读不出来，可能是存储受阻',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _busy ? null : _refreshBackups,
+                    child: const Text('重试'),
+                  ),
+                ],
+              ),
+            )
+          else if (_backups.isNotEmpty) ...[
             for (final f in shown) _backupRow(f),
             if (_backups.length > 3)
               Align(

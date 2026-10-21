@@ -36,8 +36,9 @@ class _TaskListPageState extends ConsumerState<TaskListPage> {
       _searchController.clear();
       ref.read(searchQueryProvider.notifier).clear();
     } else {
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => _searchFocus.requestFocus());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _searchFocus.requestFocus(),
+      );
     }
   }
 
@@ -94,7 +95,7 @@ class _TaskListPageState extends ConsumerState<TaskListPage> {
                   ),
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('出错了：$e')),
+                  error: (_, _) => _errorState(context, ref),
                 ),
               ),
             ],
@@ -113,6 +114,47 @@ class _TaskListPageState extends ConsumerState<TaskListPage> {
     );
   }
 
+  /// 出错态：说人话 + 可重试（数据都在本机，心理安抚先给足）。
+  Widget _errorState(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 40, color: context.colors.error),
+            const SizedBox(height: 12),
+            Text(
+              '打不开了',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: context.colors.error,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '数据都还在本机，重新试试就好',
+              style: TextStyle(
+                fontSize: 13,
+                color: context.colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.tonal(
+              onPressed: () {
+                ref.invalidate(taskListProvider);
+                ref.invalidate(searchResultsProvider);
+              },
+              style: FilledButton.styleFrom(minimumSize: const Size(64, 44)),
+              child: const Text('重试'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _searchField() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -122,11 +164,10 @@ class _TaskListPageState extends ConsumerState<TaskListPage> {
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
           hintText: '搜索标题或备注…',
-          prefixIcon: const Icon(Icons.search),
           filled: true,
           fillColor: context.colors.surface,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(context.tokens.cardRadius),
             borderSide: BorderSide.none,
           ),
         ),
@@ -145,7 +186,7 @@ class _ListFilterBar extends ConsumerWidget {
     final selected = ref.watch(selectedListIdProvider);
 
     return SizedBox(
-      height: 48,
+      height: 52,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -178,18 +219,17 @@ class _ViewBar extends ConsumerWidget {
     final config = ref.watch(viewConfigProvider);
 
     return SizedBox(
-      height: 44,
+      height: 52,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         children: [
           for (final v in config.visible)
             AppPill(
-              dense: true,
+              outlined: true,
               label: config.labelOf(v),
               selected: selected == v,
-              onTap: () =>
-                  ref.read(selectedViewProvider.notifier).select(v),
+              onTap: () => ref.read(selectedViewProvider.notifier).select(v),
             ),
         ],
       ),
@@ -256,8 +296,11 @@ class _TaskListBody extends ConsumerWidget {
         if (row is _GroupHeader) {
           return KeyedSubtree(
             key: ValueKey('h-${row.group}'),
-            child: _sectionHeader(context, '${row.group}（${row.count}）',
-                danger: row.danger),
+            child: _sectionHeader(
+              context,
+              '${row.group}（${row.count}）',
+              danger: row.danger,
+            ),
           );
         }
         final task = row as Task;
@@ -310,15 +353,19 @@ class _TaskListBody extends ConsumerWidget {
     bool sameGroup(Object? o) =>
         o is Task && _bucketOf(o, bounds, view) == group;
 
-    final prevOk = prev == null ||
+    final prevOk =
+        prev == null ||
         sameGroup(prev) ||
         (prev is _GroupHeader && prev.group == group);
-    final nextOk = next == null ||
+    final nextOk =
+        next == null ||
         sameGroup(next) ||
         (next is _GroupHeader && next.group == group && newIndex == 0);
     if (!prevOk || !nextOk) return;
 
-    ref.read(taskRepositoryProvider).reorderWithinGroup(
+    ref
+        .read(taskRepositoryProvider)
+        .reorderWithinGroup(
           movedId: moved.id,
           beforeId: prev is Task ? prev.id : null,
           afterId: next is Task ? next.id : null,
@@ -329,20 +376,22 @@ class _TaskListBody extends ConsumerWidget {
     final due = t.dueAt!;
     return switch (v) {
       ViewKind.today => due < b.todayStartMs ? '逾期' : '今天',
-      ViewKind.upcoming => due < b.dayAfterTomorrowStartMs
-          ? '明天'
-          : (due < b.nextWeekStartMs
-              ? '本周'
-              : (due < b.nextMonthStartMs ? '本月' : '更远')),
-      _ => due < b.todayStartMs
-          ? '逾期'
-          : (due < b.tomorrowStartMs
-              ? '今天'
-              : (due < b.dayAfterTomorrowStartMs
-                  ? '明天'
-                  : (due < b.nextWeekStartMs
-                      ? '本周'
-                      : (due < b.nextMonthStartMs ? '本月' : '更远')))),
+      ViewKind.upcoming =>
+        due < b.dayAfterTomorrowStartMs
+            ? '明天'
+            : (due < b.nextWeekStartMs
+                  ? '本周'
+                  : (due < b.nextMonthStartMs ? '本月' : '更远')),
+      _ =>
+        due < b.todayStartMs
+            ? '逾期'
+            : (due < b.tomorrowStartMs
+                  ? '今天'
+                  : (due < b.dayAfterTomorrowStartMs
+                        ? '明天'
+                        : (due < b.nextWeekStartMs
+                              ? '本周'
+                              : (due < b.nextMonthStartMs ? '本月' : '更远')))),
     };
   }
 
@@ -351,22 +400,28 @@ class _TaskListBody extends ConsumerWidget {
     return TaskTile(
       task: task,
       listName: list?.name ?? '生活',
-      listColorValue:
-          listColor(task.listId, list?.color, context.colors.primary),
+      listColorValue: listColor(
+        task.listId,
+        list?.color,
+        context.colors.primary,
+      ),
     );
   }
 
-  Widget _sectionHeader(BuildContext context, String text,
-      {bool danger = false}) {
+  Widget _sectionHeader(
+    BuildContext context,
+    String text, {
+    bool danger = false,
+  }) {
     final t = context.tokens;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
+          letterSpacing: 1,
           color: danger ? t.danger : t.textSecondary,
         ),
       ),
@@ -382,21 +437,25 @@ class _TaskListBody extends ConsumerWidget {
       );
     }
     return switch (view) {
-      ViewKind.today => const AppEmptyState(
-          emoji: '🍵',
-          text: '今天没有安排',
-          hint: '要不要记一件小事？',
-        ),
-      ViewKind.upcoming => const AppEmptyState(
-          emoji: '🌤️',
-          text: '接下来没有安排',
-          hint: '未来的事都会出现在这里',
-        ),
+      ViewKind.today => AppEmptyState(
+        emoji: '🍵',
+        text: '今天没有安排',
+        hint: '要不要记一件小事？',
+        actionLabel: '记一件小事',
+        onAction: () => openTaskEditSheet(context),
+      ),
+      ViewKind.upcoming => AppEmptyState(
+        emoji: '🌤️',
+        text: '接下来没有安排',
+        hint: '未来的事都会出现在这里',
+        actionLabel: '记一件小事',
+        onAction: () => openTaskEditSheet(context),
+      ),
       ViewKind.done => const AppEmptyState(
-          emoji: '✅',
-          text: '还没有完成的任务',
-          hint: '做完的事会收在这里',
-        ),
+        emoji: '✅',
+        text: '还没有完成的任务',
+        hint: '做完的事会收在这里',
+      ),
       _ => const AppEmptyState(emoji: '🗒️', text: '这里还没有内容'),
     };
   }

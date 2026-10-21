@@ -15,8 +15,10 @@ Future<void> openTaskEditSheet(BuildContext context, {Task? task}) {
     context: context,
     isScrollControlled: true,
     backgroundColor: context.colors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(context.tokens.sheetRadius),
+      ),
     ),
     builder: (_) => TaskEditSheet(task: task),
   );
@@ -40,7 +42,17 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
   late int _offsetMinutes;
   bool _noteOpen = false;
   bool _saving = false;
+  bool _canPop = false;
   RepeatRule? _repeat;
+
+  // 初值快照：用于判断「有没有改动过」，决定关闭前要不要确认。
+  String _originalTitle = '';
+  String _originalNote = '';
+  late String _originalListId;
+  int? _originalDueAt;
+  bool _originalDueHasTime = false;
+  late int _originalOffsetMinutes;
+  String? _originalRepeatRule;
 
   bool get _isEditing => widget.task != null;
 
@@ -50,9 +62,8 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     final t = widget.task;
     _title = TextEditingController(text: t?.title ?? '');
     _note = TextEditingController(text: t?.note ?? '');
-    _listId = t?.listId ??
-        ref.read(selectedListIdProvider) ??
-        kDefaultNewTaskListId;
+    _listId =
+        t?.listId ?? ref.read(selectedListIdProvider) ?? kDefaultNewTaskListId;
     _dueAt = t?.dueAt ?? planDateOnly(DayBounds().todayStart).dueAt;
     _dueHasTime = t?.dueHasTime ?? false;
     _noteOpen = (t?.note ?? '').isNotEmpty;
@@ -61,11 +72,19 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     // 默认提前量取自设置；编辑已有任务时按它实际存的提醒反推。
     _offsetMinutes = ref.read(remindOffsetProvider);
     if (t?.dueAt != null && t?.remindAt != null) {
-      final inferred = ((_baseRemindAt(t!.dueAt!, t.dueHasTime) - t.remindAt!) /
-              60000)
-          .round();
+      final inferred =
+          ((_baseRemindAt(t!.dueAt!, t.dueHasTime) - t.remindAt!) / 60000)
+              .round();
       if (inferred >= 0) _offsetMinutes = inferred;
     }
+
+    _originalTitle = _title.text;
+    _originalNote = _note.text;
+    _originalListId = _listId;
+    _originalDueAt = _dueAt;
+    _originalDueHasTime = _dueHasTime;
+    _originalOffsetMinutes = _offsetMinutes;
+    _originalRepeatRule = t?.repeatRule;
   }
 
   @override
@@ -113,10 +132,57 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     );
     if (picked == null) return;
     setState(() {
-      _dueAt = DateTime(due.year, due.month, due.day, picked.hour, picked.minute)
-          .millisecondsSinceEpoch;
+      _dueAt = DateTime(
+        due.year,
+        due.month,
+        due.day,
+        picked.hour,
+        picked.minute,
+      ).millisecondsSinceEpoch;
       _dueHasTime = true;
     });
+  }
+
+  /// 用户动了任何东西（标题 / 备注 / 清单 / 时间 / 提前量 / 重复）就算有未保存输入。
+  bool _hasUnsavedInput() =>
+      _title.text != _originalTitle ||
+      _note.text != _originalNote ||
+      _listId != _originalListId ||
+      _dueAt != _originalDueAt ||
+      _dueHasTime != _originalDueHasTime ||
+      _offsetMinutes != _originalOffsetMinutes ||
+      _repeat?.encode() != _originalRepeatRule;
+
+  /// 关闭入口（✕ / 下滑 / 返回手势都走这里）：有输入先问一嘴，别让人白打字。
+  Future<void> _requestClose() async {
+    if (!_hasUnsavedInput()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('放弃这次编辑？'),
+        content: const Text('输入的内容不会被保存。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('继续编辑'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('放弃'),
+          ),
+        ],
+      ),
+    );
+    if (discard == true && mounted) _closeAfterLeaveGuard();
+  }
+
+  /// PopScope 设了 canPop:false，真正离开前先放行。
+  void _closeAfterLeaveGuard() {
+    setState(() => _canPop = true);
+    Navigator.of(context).pop();
   }
 
   Future<void> _save() async {
@@ -128,8 +194,11 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     setState(() => _saving = true);
 
     final remindAt = _remindAt;
-    // 首次设置提醒时再申请权限（而不是一启动就弹）。
-    await NotificationService.instance.requestPermissions();
+    // 首次设置提醒时再申请权限；被拒就当场说清楚，别让人以为提醒会响。
+    final granted = await NotificationService.instance.requestPermissions();
+    if (!granted && mounted) {
+      showInfoSnack(context, '提醒可能不会响：通知权限没打开，可在设置里开启');
+    }
 
     final repo = ref.read(taskRepositoryProvider);
     final listRepo = ref.read(listRepositoryProvider);
@@ -160,6 +229,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
       await listRepo.rememberLastUsedList(_listId);
     }
     if (!mounted) return;
+    setState(() => _canPop = true); // 已保存，直接走，不用询问
     Navigator.of(context).pop();
   }
 
@@ -168,6 +238,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     final id = widget.task!.id;
     await repo.softDelete(id);
     if (!mounted) return;
+    setState(() => _canPop = true);
     Navigator.of(context).pop();
     showUndoSnack(context, '已删除', () => repo.restore(id));
   }
@@ -175,184 +246,225 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
   @override
   Widget build(BuildContext context) {
     final lists = ref.watch(listsProvider).value ?? const <TaskList>[];
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final navInset = MediaQuery.paddingOf(context).bottom;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    _isEditing ? '编辑任务' : '新建任务',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
+    // 弹层最高只长到「状态栏下方 24px」：键盘越高可用越小（内容滚动），
+    // 顶部不再上移、不与状态栏重叠；极小屏兜底至少 200 逻辑像素。
+    final maxContentHeight =
+        MediaQuery.sizeOf(context).height -
+        MediaQuery.paddingOf(context).top -
+        24 -
+        bottomInset -
+        navInset;
+
+    return PopScope(
+      canPop: _canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _requestClose();
+      },
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: SafeArea(
+          top: false,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: maxContentHeight.clamp(200, double.infinity),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              _isEditing ? '编辑任务' : '新建任务',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              tooltip: '关闭',
+                              onPressed: _requestClose,
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        _sectionLabel('清单'),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            for (final l in lists)
+                              ChoiceChip(
+                                label: Text(l.name),
+                                selected: _listId == l.id,
+                                onSelected: (_) =>
+                                    setState(() => _listId = l.id),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _title,
+                          autofocus: !_isEditing,
+                          textInputAction: TextInputAction.done,
+                          maxLength: 200,
+                          style: const TextStyle(fontSize: 18),
+                          decoration: const InputDecoration(
+                            hintText: '要做什么？',
+                            counterText: '',
+                          ),
+                          onSubmitted: (_) => _save(),
+                        ),
+                        const SizedBox(height: 12),
+                        _sectionLabel('时间'),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            _quickDateChip('今天', 0),
+                            _quickDateChip('明天', 1),
+                            _quickDateChip('后天', 2),
+                            _quickDateChip('下周', 0, fromWeekStart: true),
+                            ActionChip(
+                              label: const Text('选…'),
+                              onPressed: _pickDate,
+                            ),
+                          ],
+                        ),
+                        // 具体时间属于「时间」：设置的是到点时间，不是提前量。
+                        TextButton.icon(
+                          onPressed: _pickTime,
+                          icon: const Icon(Icons.schedule, size: 18),
+                          label: Text(_dueHasTime ? '改具体时间' : '加一个具体时间'),
+                        ),
+                        const SizedBox(height: 4),
+                        _sectionLabel('提醒'),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            for (final m in const [0, 5, 15, 30])
+                              ChoiceChip(
+                                label: Text(m == 0 ? '准时' : '提前 $m 分'),
+                                selected: _offsetMinutes == m,
+                                onSelected: (_) =>
+                                    setState(() => _offsetMinutes = m),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _dueSummary(),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: context.colors.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _sectionLabel('重复'),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: const Text('不重复'),
+                              selected: _repeat == null,
+                              onSelected: (_) => setState(() => _repeat = null),
+                            ),
+                            _repeatChip('每天', () => RepeatRule.daily()),
+                            _repeatChip(
+                              '每周',
+                              () => RepeatRule.weekly(
+                                _dueAt == null
+                                    ? DateTime.now()
+                                    : DateTime.fromMillisecondsSinceEpoch(
+                                        _dueAt!,
+                                      ),
+                              ),
+                            ),
+                            _repeatChip('每月', () => RepeatRule.monthly()),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => setState(() => _noteOpen = !_noteOpen),
+                          behavior: HitTestBehavior.opaque,
+                          child: Row(
+                            children: [
+                              Icon(
+                                _noteOpen
+                                    ? Icons.expand_less
+                                    : Icons.expand_more,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 4),
+                              const Text('备注'),
+                            ],
+                          ),
+                        ),
+                        if (_noteOpen) ...[
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _note,
+                            maxLines: 4,
+                            maxLength: 2000,
+                            decoration: InputDecoration(
+                              hintText: '补充说明（可选）',
+                              filled: true,
+                              fillColor: context.appBackground,
+                              border: const OutlineInputBorder(),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              _sectionLabel('清单'),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final l in lists)
-                    ChoiceChip(
-                      label: Text(l.name),
-                      selected: _listId == l.id,
-                      onSelected: (_) => setState(() => _listId = l.id),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _sectionLabel('标题'),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _title,
-                      autofocus: !_isEditing,
-                      textInputAction: TextInputAction.done,
-                      maxLength: 200,
-                      style: const TextStyle(fontSize: 18),
-                      decoration: const InputDecoration(
-                        hintText: '输入标题…',
-                        counterText: '',
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: FilledButton(
+                          onPressed: _saving ? null : _save,
+                          child: Text(
+                            _saving ? '正在保存…' : '保存',
+                            style: const TextStyle(fontSize: 17),
+                          ),
+                        ),
                       ),
-                      onSubmitted: (_) => _save(),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _sectionLabel('时间'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  _quickDateChip('今天', 0),
-                  _quickDateChip('明天', 1),
-                  _quickDateChip('后天', 2),
-                  _quickDateChip('下周', 0, fromWeekStart: true),
-                  ActionChip(label: const Text('选…'), onPressed: _pickDate),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (_dueAt != null) ...[
-                _sectionLabel('提醒'),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final m in const [0, 5, 15, 30])
-                      ChoiceChip(
-                        label: Text(m == 0 ? '准时' : '提前 $m 分'),
-                        selected: _offsetMinutes == m,
-                        onSelected: (_) =>
-                            setState(() => _offsetMinutes = m),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _pickTime,
-                    icon: const Icon(Icons.schedule, size: 18),
-                    label: Text(_dueHasTime ? '改具体时间' : '加一个具体时间'),
+                      if (_isEditing) ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton(
+                            onPressed: _delete,
+                            child: Text(
+                              '删除这条任务',
+                              style: TextStyle(color: context.colors.error),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
-              Text(
-                _dueSummary(),
-                style: TextStyle(
-                  fontSize: 13,
-                  color: context.colors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _sectionLabel('重复'),
-              Wrap(
-                spacing: 8,
-                children: [
-                  ChoiceChip(
-                    label: const Text('不重复'),
-                    selected: _repeat == null,
-                    onSelected: (_) => setState(() => _repeat = null),
-                  ),
-                  _repeatChip('每天', () => RepeatRule.daily()),
-                  _repeatChip(
-                    '每周',
-                    () => RepeatRule.weekly(
-                      _dueAt == null
-                          ? DateTime.now()
-                          : DateTime.fromMillisecondsSinceEpoch(_dueAt!),
-                    ),
-                  ),
-                  _repeatChip('每月', () => RepeatRule.monthly()),
-                ],
-              ),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () => setState(() => _noteOpen = !_noteOpen),
-                behavior: HitTestBehavior.opaque,
-                child: Row(
-                  children: [
-                    Icon(_noteOpen ? Icons.expand_less : Icons.expand_more,
-                        size: 20),
-                    const SizedBox(width: 4),
-                    const Text('备注'),
-                  ],
-                ),
-              ),
-              if (_noteOpen) ...[
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _note,
-                  maxLines: 4,
-                  maxLength: 2000,
-                  decoration: InputDecoration(
-                    hintText: '补充说明（可选）',
-                    filled: true,
-                    fillColor: context.appBackground,
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: const Text('保存', style: TextStyle(fontSize: 17)),
-                ),
-              ),
-              if (_isEditing) ...[
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: _delete,
-                    child: Text(
-                      '删除这条任务',
-                      style: TextStyle(color: context.colors.error),
-                    ),
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),
@@ -369,24 +481,28 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
   }
 
   Widget _sectionLabel(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: context.colors.onSurfaceVariant,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: context.colors.onSurfaceVariant,
+      ),
+    ),
+  );
 
-  Widget _quickDateChip(String label, int offsetDays,
-      {bool fromWeekStart = false}) {
+  Widget _quickDateChip(
+    String label,
+    int offsetDays, {
+    bool fromWeekStart = false,
+  }) {
     final bounds = DayBounds();
     final base = fromWeekStart ? bounds.weekStart : bounds.todayStart;
     final day = DateTime(base.year, base.month, base.day + offsetDays);
     final dayMs = DateTime(day.year, day.month, day.day).millisecondsSinceEpoch;
-    final selected = !_dueHasTime &&
+    final selected =
+        !_dueHasTime &&
         _dueAt != null &&
         DayBounds(DateTime.fromMillisecondsSinceEpoch(_dueAt!)).todayStartMs ==
             dayMs;
@@ -399,12 +515,8 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
 
   String _dueSummary() {
     final due = DateTime.fromMillisecondsSinceEpoch(_dueAt!);
-    final date = '${due.year}-${due.month.toString().padLeft(2, '0')}-'
-        '${due.day.toString().padLeft(2, '0')}';
-    final remind =
-        '，提醒 ${_hm(DateTime.fromMillisecondsSinceEpoch(_remindAt))}';
-    if (!_dueHasTime) return '$date（全天$remind）';
-    return '$date ${_hm(due)}$remind';
+    final date = '${due.month}月${due.day}日';
+    return _dueHasTime ? '$date ${_hm(due)}' : '$date（全天）';
   }
 
   static String _hm(DateTime t) =>

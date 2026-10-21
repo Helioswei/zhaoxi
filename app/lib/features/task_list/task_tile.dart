@@ -78,8 +78,7 @@ class TaskTile extends ConsumerWidget {
                 children: [
                   IconButton(
                     tooltip: done ? '标记为未完成' : '完成',
-                    iconSize: 26,
-                    visualDensity: VisualDensity.compact,
+                    iconSize: 28,
                     onPressed: toggle,
                     icon: Icon(
                       done ? Icons.check_circle : Icons.radio_button_unchecked,
@@ -100,8 +99,9 @@ class TaskTile extends ConsumerWidget {
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
                             color: done ? t.textSecondary : t.textPrimary,
-                            decoration:
-                                done ? TextDecoration.lineThrough : null,
+                            decoration: done
+                                ? TextDecoration.lineThrough
+                                : null,
                             decorationColor: t.textSecondary,
                           ),
                         ),
@@ -122,66 +122,50 @@ class TaskTile extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AppBadge(label.text, color: labelColor),
-                      const SizedBox(height: 4),
-                      if (done)
-                        InkWell(
-                          onTap: toggle,
-                          borderRadius: BorderRadius.circular(999),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            child: Text(
-                              '恢复',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: t.primary,
-                                fontWeight: FontWeight.w600,
+                  // 已完成：只留时间徽章。左边的完成圆钮就是恢复入口，不再重复一个「恢复」按钮。
+                  if (done)
+                    AppBadge(label.text, color: labelColor)
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AppBadge(label.text, color: labelColor),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (repeat != null)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: Text(
+                                  '↻ ${repeat.freq.label}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: t.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: listColorValue,
+                                shape: BoxShape.circle,
                               ),
                             ),
-                          ),
-                        )
-                      else
-                        Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (repeat != null) ...[
+                            const SizedBox(width: 4),
                             Text(
-                              '↻ ${repeat.freq.label}',
+                              listName,
                               style: TextStyle(
                                 fontSize: 11,
                                 color: t.textSecondary,
                               ),
                             ),
-                            if (listName.isNotEmpty)
-                              Text(' · ',
-                                  style: TextStyle(
-                                      fontSize: 11, color: t.textSecondary)),
                           ],
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: listColorValue,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            listName,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: t.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),

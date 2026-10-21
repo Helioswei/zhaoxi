@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,7 +17,7 @@ import '../../ui/widgets/app_pill.dart';
 
 /// 导出页（与「备份与恢复」「回收站」同为页面，行为一致）。
 ///
-/// 默认只露 3 组选择（范围 / 清单 / 格式），低频项收进「更多选项」；
+/// 五组选择全展开（范围 / 清单 / 格式 / 内容 / 已删除）；
 /// 分组不再让用户选，按范围自动决定（≤14 天按日，否则按周）。
 class ExportPage extends ConsumerStatefulWidget {
   const ExportPage({super.key});
@@ -99,7 +100,8 @@ class _ExportPageState extends ConsumerState<ExportPage> {
         await shareBytes(fileName: name, bytes: bytes);
       }
     } catch (e) {
-      if (mounted) showInfoSnack(context, '导出失败：$e');
+      debugPrint('export failed: $e');
+      if (mounted) showInfoSnack(context, '导出失败，再试一次');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -167,15 +169,6 @@ class _ExportPageState extends ConsumerState<ExportPage> {
           ),
           if (_preset == ExportRangePreset.custom) _customRange(),
 
-          _label('哪些清单'),
-          _pills<String?>(
-            values: [null, ...lists.map((l) => l.id)],
-            selected: _listId,
-            label: (v) =>
-                v == null ? '全部' : lists.firstWhere((l) => l.id == v).name,
-            onSelect: (v) => setState(() => _listId = v),
-          ),
-
           _label('格式'),
           _pills<ExportFormat>(
             values: const [
@@ -190,22 +183,20 @@ class _ExportPageState extends ConsumerState<ExportPage> {
               ExportFormat.pdf => 'PDF',
               ExportFormat.word => 'Word',
               ExportFormat.xlsx => 'Excel',
-              ExportFormat.markdown => 'MD',
-              ExportFormat.text => '复制',
+              ExportFormat.markdown => 'Markdown',
+              ExportFormat.text => '复制文字',
             },
             onSelect: (v) => setState(() => _format = v),
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              'MD = Markdown 文件 · 复制 = 拷到剪贴板',
-              style: TextStyle(
-                fontSize: 12,
-                color: context.colors.onSurfaceVariant,
-              ),
-            ),
-          ),
 
+          _label('哪些清单'),
+          _pills<String?>(
+            values: [null, ...lists.map((l) => l.id)],
+            selected: _listId,
+            label: (v) =>
+                v == null ? '全部' : lists.firstWhere((l) => l.id == v).name,
+            onSelect: (v) => setState(() => _listId = v),
+          ),
           _label('内容'),
           _pills<ExportContent>(
             values: ExportContent.values,
@@ -233,9 +224,20 @@ class _ExportPageState extends ConsumerState<ExportPage> {
                 height: 52,
                 child: FilledButton.icon(
                   onPressed: _busy ? null : () => _run(toFile: false),
-                  icon: Icon(_isText ? Icons.copy : Icons.ios_share),
+                  icon: _busy
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        )
+                      : Icon(_isText ? Icons.copy : Icons.ios_share),
                   label: Text(
-                    _isText ? '复制文字' : '分享 / 发送',
+                    _busy
+                        ? '正在整理记录…'
+                        : (_isText ? '复制文字' : '分享 / 发送'),
                     style: const TextStyle(fontSize: 17),
                   ),
                 ),

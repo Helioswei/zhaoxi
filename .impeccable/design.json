@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-21T00:00:00+08:00",
+  "title": "Design System: 朝夕",
+  "extensions": {
+    "colorMeta": {
+      "warm-bg": { "role": "neutral", "displayName": "奶油纸", "canonical": "#FBF8F3", "tonalRamp": ["#322511","#604820","#8E6A2F","#B88A3D","#CCA666","#DBC194","#EBDBC2","#F9F4EC"] },
+      "warm-card": { "role": "neutral", "displayName": "瓷白卡片", "canonical": "#FFFFFF", "tonalRamp": ["#545454","#717171","#8E8E8E","#A5A5A5","#BDBDBD","#D3D3D3","#E8E8E8","#F8F8F8"] },
+      "warm-primary": { "role": "primary", "displayName": "茶青绿", "canonical": "#3F8F7B", "tonalRamp": ["#142E28","#27594C","#3A8371","#4BAA92","#71C1AD","#9CD3C5","#C6E6DE","#EDF7F5"] },
+      "warm-accent": { "role": "secondary", "displayName": "暖橘", "canonical": "#E9934E", "tonalRamp": ["#3B1E07","#713A0E","#A85615","#DA701B","#E8904A","#EFB280","#F6D3B6","#FCF1E8"] },
+      "warm-danger": { "role": "error", "displayName": "陶红", "canonical": "#C4553F", "tonalRamp": ["#331510","#62291E","#903D2C","#BB4F3A","#CF7563","#DD9E92","#ECC8C1","#F9EEEB"] },
+      "warm-ink": { "role": "neutral", "displayName": "墨", "canonical": "#33302E", "tonalRamp": ["#23211F","#433F3C","#635D59","#817974","#9E9894","#BBB7B4","#D8D6D4","#F3F2F2"] },
+      "warm-ink-muted": { "role": "neutral", "displayName": "灰墨", "canonical": "#8C8880", "tonalRamp": ["#232220","#43413D","#63605A","#807C74","#9E9B94","#BBB9B4","#D8D7D4","#F3F2F2"] },
+      "warm-chip-selected": { "role": "secondary", "displayName": "前置浅青", "canonical": "#E9F4EF", "tonalRamp": ["#16241F","#2A3F36","#3E5B4F","#5A7970","#7B9A91","#9FBDB5","#C4DCD7","#E9F4EF"] },
+      "warm-divider": { "role": "neutral", "displayName": "纸纹分隔", "canonical": "#F0EAE1", "tonalRamp": ["#2B2620","#524A41","#786E62","#9A8F81","#B9AF9F","#D0C7B9","#E2DBCF","#F0EAE1"] },
+      "list-work": { "role": "primary", "displayName": "钢青蓝（固定）", "canonical": "#3B6EA5", "tonalRamp": ["#14253B","#273F5E","#3A5C82","#4A76A0","#6E93B5","#93B3CC","#B8D0E3","#E0EBF4"] },
+      "list-life": { "role": "primary", "displayName": "苍青绿（固定）", "canonical": "#3B7A6E", "tonalRamp": ["#142E28","#27594C","#3A8371","#4BAA92","#71C1AD","#9CD3C5","#C6E6DE","#F0F8F5"] }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "顶栏页标题，每屏一个。" },
+      "label": { "displayName": "Label", "purpose": "筛选 chip 与小标签。" }
+    },
+    "shadows": [
+      { "name": "card-lift", "value": "0 1px 3px rgba(0,0,0,0.10)", "purpose": "唯一允许的卡片托感：温润浅色主题 elevation 1.5；其余风格与暗色一律 0。" }
+    ],
+    "motion": [
+      { "name": "undo-snackbar", "value": "Material floating snackbar（标准时长）", "purpose": "完成/删除/重复推进的统一可撤销反馈。" }
+    ]
+  },
+  "components": [
+    {
+      "name": "任务卡",
+      "kind": "card",
+      "refersTo": "task-card",
+      "description": "单列列表的主角：圆角卡 + 圆形完成钮 + 日期标签，点行进编辑弹层。",
+      "html": "<div class=\"ds-task-card\"><span class=\"ds-task-dot\"></span><div class=\"ds-task-body\"><div class=\"ds-task-title\">周三倒垃圾</div><div class=\"ds-task-sub\">每周重复 · 已做 3 次</div></div><div class=\"ds-task-due\">今天</div></div>",
+      "css": ".ds-task-card{display:flex;align-items:center;gap:12px;background:#FFFFFF;border-radius:22px;padding:10px 14px 10px 6px;box-shadow:0 1px 3px rgba(0,0,0,0.10);transition:background .2s;cursor:pointer}.ds-task-card:hover{background:#F9F7F2}.ds-task-dot{width:22px;height:22px;border-radius:50%;border:2px solid #3F8F7B;flex:none}.ds-task-body{flex:1;min-width:0}.ds-task-title{color:#33302E;font-size:16px}.ds-task-sub{color:#8C8880;font-size:12px;margin-top:2px}.ds-task-due{font-size:12px;color:#E9934E;font-weight:600}"
+    },
+    {
+      "name": "任务卡（暗色）",
+      "kind": "card",
+      "refersTo": "task-card",
+      "description": "同一任务的暗色形态：坦平无阴影，靠卡色在底色上略微抬头。",
+      "html": "<div class=\"ds-task-card-dark\"><span class=\"ds-task-dot-dark\"></span><div class=\"ds-task-body\"><div class=\"ds-task-title\">周三倒垃圾</div></div><div class=\"ds-task-due\">今天</div></div>",
+      "css": ".ds-task-card-dark{display:flex;align-items:center;gap:12px;background:#221F26;border-radius:22px;padding:10px 14px 10px 6px;cursor:pointer}.ds-task-dot-dark{width:22px;height:22px;border-radius:50%;border:2px solid #74C7AF;flex:none}.ds-task-title{color:#F2ECE6;font-size:16px}.ds-task-due{font-size:12px;color:#F0B478;font-weight:600}"
+    },
+    {
+      "name": "筛选 Chip",
+      "kind": "chip",
+      "refersTo": "chip-filter",
+      "description": "顶部视图筛选（今天 / 接下来 / 已完成），stadium 全圆、无边框。",
+      "html": "<span class=\"ds-chip\">接下来</span> <span class=\"ds-chip ds-chip-selected\">今天</span>",
+      "css": ".ds-chip{display:inline-block;background:transparent;color:#8C8880;font-size:14px;font-weight:500;padding:8px 16px;border-radius:9999px;cursor:pointer;transition:background .2s}.ds-chip:hover{background:rgba(51,48,46,.05)}.ds-chip-selected{background:#E9F4EF;color:#3F8F7B;font-weight:600}"
+    },
+    {
+      "name": "新建 FAB",
+      "kind": "button",
+      "refersTo": null,
+      "description": "每屏唯一主操作入口，Material M3 容器形态。",
+      "html": "<button class=\"ds-fab\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg></button>",
+      "css": ".ds-fab{width:56px;height:56px;border-radius:16px;border:none;background:#3F8F7B;color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.18);transition:transform .15s,box-shadow .15s}.ds-fab:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.22)}.ds-fab:active{transform:translateY(0)}"
+    },
+    {
+      "name": "撤销 Snackbar",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "反色浮起条，永远带「撤销」动作——朝夕可撤回承诺的可视化。",
+      "html": "<div class=\"ds-snack\"><span>已完成 ✓</span><button class=\"ds-snack-action\">撤销</button></div>",
+      "css": ".ds-snack{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#33302E;color:#FFFFFF;border-radius:12px;padding:14px 16px;min-width:280px;max-width:560px}.ds-snack-action{background:none;border:none;color:#74C7AF;font-weight:600;cursor:pointer;padding:4px 8px;border-radius:8px}.ds-snack-action:hover{background:rgba(255,255,255,.08)}"
+    },
+    {
+      "name": "底部弹层",
+      "kind": "custom",
+      "refersTo": "sheet",
+      "description": "编辑/导出面板容器：顶部大圆角、瓷白面、无边无影；时间选择用快捷大按钮。",
+      "html": "<div class=\"ds-sheet\"><div class=\"ds-sheet-handle\"></div><div class=\"ds-sheet-title\">编辑任务</div><div class=\"ds-sheet-row\"><span class=\"ds-time-chip\">今天</span><span class=\"ds-time-chip\">明天</span><span class=\"ds-time-chip\">选时间…</span></div></div>",
+      "css": ".ds-sheet{background:#FFFFFF;border-radius:28px 28px 0 0;padding:20px 20px 28px}.ds-sheet-handle{width:32px;height:4px;border-radius:2px;background:#E9E6E0;margin:0 auto 16px}.ds-sheet-title{color:#33302E;font-size:18px;font-weight:700;margin-bottom:16px}.ds-sheet-row{display:flex;gap:8px}.ds-time-chip{background:#F3F0EA;color:#33302E;font-size:14px;padding:10px 16px;border-radius:14px;cursor:pointer}.ds-time-chip:hover{background:#ECE8E0}"
+    }
+  ],
+  "narrative": {
+    "northStar": "朝夕之间的口袋日常",
+    "overview": "朝夕的设计不为展示，「掏出来 5 秒搞定」。奶油色的纸面托着一份很轻的清单，暖橘只在「今天」出现，逾期给一条陶红，其他时候颜色闭嘴。它像身边一件常用的小物：好按、好认、不用学。\n\n三套风格（清爽／温润／纸感）共用同一套骨架与组件，只换令牌：底色、圆角、点缀、字体。默认且最能代表朝夕气质的是温润。所有判断先对齐温润，再验证另两套不破。",
+    "keyCharacteristics": [
+      "颜色即状态，绝不为装饰上色",
+      "平面优先，靠圆角与底色分层",
+      "圆角是风格的身份证（16／22／12）",
+      "中文一等公民，字号随系统缩放",
+      "一切误操作可撤销，反馈用浮起 Snackbar"
+    ],
+    "rules": [
+      { "name": "The 颜色即状态 Rule", "body": "茶青绿=已办，暖橘=今天/进行中，陶红=逾期/删除。语义映射全风格恒定，新 UI 不得挪作装饰。", "section": "colors" },
+      { "name": "The 少色 Rule", "body": "任一屏内彩色占比不超过 5%，大面积永远是奶油纸/瓷白。", "section": "colors" },
+      { "name": "The 系统字优先 Rule", "body": "正文跟系统字号缩放，不写死 px；纸感整身衬线，不混排。", "section": "typography" },
+      { "name": "The 平面优先 Rule", "body": "新组件默认 0 阴影；先底色与圆角，才申请一枚 ≤10% 黑轻投影。", "section": "elevation" },
+      { "name": "The 圆角即风格 Rule", "body": "圆角半径必须读 AppTokens，不许写死。", "section": "shapes" }
+    ],
+    "dos": [
+      "所有组件颜色/圆角一律走 context.tokens / context.colors",
+      "语义色恒定：今天=暖橘、逾期=陶红、完成=茶青绿、删除底=陶红",
+      "保持 ≥48dp 触控目标、目标间 ≥8dp",
+      "深浅两套都逐屏过一遍，纸感另查衬线回退",
+      "撤销统一走 showUndoSnack，文案短句直述"
+    ],
+    "donts": [
+      "在 widget 里写死十六进制色或固定圆角",
+      "用暖橘做按钮/填充主色",
+      "给平面卡片加多层阴影或大投影",
+      "引入 Cupertino 控件或 iOS 式底部导航",
+      "为「重要程度」发明新的颜色概念"
+    ]
+  }
+}
