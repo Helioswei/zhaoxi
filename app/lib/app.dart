@@ -1,25 +1,96 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/export/backup_page.dart';
 import 'features/export/export_page.dart';
+import 'features/import/restore_flow.dart';
 import 'features/settings/list_manage_page.dart';
 import 'features/settings/recycle_bin_page.dart';
 import 'features/settings/settings_page.dart';
 import 'features/settings/view_manage_page.dart';
 import 'features/task_list/task_list_page.dart';
 import 'providers/app_providers.dart';
+import 'services/share_intake.dart';
+import 'ui/snack.dart';
 import 'ui/theme/app_theme.dart';
 
 /// 供通知点击后跳转使用。
 final appNavigatorKey = GlobalKey<NavigatorState>();
 
-class ZhaoxiApp extends ConsumerWidget {
+/// 快速判断这段文本像不像朝夕的备份（避免对着一堆无关文件弹恢复窗）。
+bool looksLikeZhaoxiBackup(String content) {
+  try {
+    final root = jsonDecode(content);
+    if (root is Map && root['app'] == 'zhaoxi') return true;
+  } catch (_) {
+    // 不是 JSON，交给导入层去报更具体的错
+  }
+  return false;
+}
+
+class ZhaoxiApp extends ConsumerStatefulWidget {
   const ZhaoxiApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ZhaoxiApp> createState() => _ZhaoxiAppState();
+}
+
+class _ZhaoxiAppState extends ConsumerState<ZhaoxiApp>
+    with WidgetsBindingObserver {
+  bool _handlingShare = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    ShareIntake.ensureListener();
+    ShareIntake.onShare = _handleSharedFile;
+    ShareIntake.onShareFailed = (name) {
+      final context = appNavigatorKey.currentContext;
+      if (context == null || !context.mounted) return;
+      showInfoSnack(context, '读不到 $name，先把它保存到手机再试');
+    };
+    WidgetsBinding.instance.addPostFrameCallback((_) => _handleSharedFile());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 从微信「分享到朝夕」回到前台时，可能带着一个备份文件。
+    if (state == AppLifecycleState.resumed) _handleSharedFile();
+  }
+
+  /// 取「分享到朝夕」送来的备份文件，直接进恢复流程（不过系统选择器）。
+  Future<void> _handleSharedFile() async {
+    if (_handlingShare) return;
+    _handlingShare = true;
+    try {
+      final shared = await ShareIntake.takePending();
+      if (shared == null) return;
+      final context = appNavigatorKey.currentContext;
+      if (context == null || !context.mounted) return;
+
+      // 不是朝夕的备份就别弹窗了，直接说人话。
+      if (!looksLikeZhaoxiBackup(shared.content)) {
+        showInfoSnack(context, '这个文件不是朝夕的备份');
+        return;
+      }
+      await showRestoreFlow(context, ref, shared.content, fileName: shared.name);
+    } finally {
+      _handlingShare = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final mode = ref.watch(themeModeProvider);
     final fontScale = ref.watch(fontScaleProvider);
     final style = ref.watch(styleProvider);

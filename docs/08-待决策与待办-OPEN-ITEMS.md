@@ -120,7 +120,7 @@
 | T-1 | macOS 构建 | 🔄 **CI 已能出包**（macos job 通过，ad-hoc 签名，首次打开需右键→打开）；本机仍缺 Xcode |
 | T-2 | 自动备份改为「用户自选目录」+ macOS security-scoped bookmark | 依赖 T-1 才好验证 |
 | T-8 | 备份导入时可选「按清单/时间范围过滤」（当前是全量合并/覆盖） | — |
-| **T-9** | **「分享到朝夕」导入**（ACTION_SEND/VIEW 接收 .json）：彻底绕开系统文件选择器 | 见下 |
+| ~~T-9~~ | ~~「分享到朝夕」导入~~ | ✅ 已实现并实测（2026-10-22） |
 | T-3 | 真机验收清单剩余项：通知到点、精确闹钟授权、月报 PDF 中文 | 需真机 |
 | T-4 | ~~release 包换正式签名密钥~~ | ✅ 已生成 `zhaoxi-release.jks`（CN=Zhaoxi），本地与 CI 均使用 |
 | T-5 | 重复任务补「每 N 天」的 UI 入口（`RepeatRule.everyDays` 已实现，编辑页暂未暴露） | — |
@@ -129,18 +129,24 @@
 
 ---
 
-### T-9 说明（系统文件选择器问题）
+### T-9 说明（系统文件选择器问题）— ✅ 已解决
 
 现象：在部分国产 ROM 上，系统「文件」选择器的**目录名/文件名/侧栏名称全部不显示**（只剩图标），
-侧栏还固定出现 音频/视频/图片。这是 DocumentsUI 的渲染问题，App 无法改变。
+搜索框里输入的字也看不见，深色模式同样空白 —— 其他 App 正常（它们走厂商文件管理/MediaStore）。
+实测结论：换 Intent 无解。同一文件在小米上，`OPEN_DOCUMENT × 5 种写法` 渲染完全一致；
+点名让小米「文件管理」接手也失败（它不接 `OPEN_DOCUMENT`，系统直接报
+`No activity found to handle intent`）。这是 ROM 的选择器渲染 + 注册缺失，App 侧改不动。
 
-现状与绕过：
-- 自动备份列表（备份与恢复页底部）可**直接分享/恢复**，不经过选择器；
-- 「选择备份文件…」仍可用，但在这类机型上体验差。
+已落地方案（T-9）：
+- 注册 `ACTION_SEND`（`application/json` / `text/plain` / `application/octet-stream`）
+  与 `ACTION_VIEW`（`application/json`，`file` / `content` scheme）；
+- 原生读到文件名 + 内容后推给 Flutter，复用「合并 / 覆盖」弹窗，弹窗里显示文件名；
+- 冷启动（App 没开）与热启动（已在前台）都覆盖：原生 `onCreate` / `onNewIntent` + 主动推送；
+- 不是朝夕备份的文件只提示「这个文件不是朝夕的备份」，不弹恢复窗；
+- 读不到（对方没给授权）时提示「读不到 xxx，先把它保存到手机再试」。
 
-建议方案（待做）：注册 `ACTION_SEND` / `ACTION_VIEW`（`application/json`、`text/plain`、
-`application/octet-stream`），用 `receive_sharing_intent` 接收后复用现有「合并 / 覆盖」弹窗。
-用户流程：微信收到 json → 分享/用其他应用打开 → 朝夕 → 合并或覆盖。
+用户流程：微信收到 json → 长按 → 用其他应用打开（或分享）→ 朝夕 → 合并或覆盖。
+备份页「从文件恢复」下方也加了这条提示文案。依赖：无第三方插件（原生 MethodChannel 自实现）。
 
 ---
 

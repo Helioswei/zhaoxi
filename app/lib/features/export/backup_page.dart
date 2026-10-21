@@ -9,10 +9,9 @@ import 'package:path/path.dart' as p;
 import '../../providers/app_providers.dart';
 import '../../services/backup_service.dart';
 import '../../services/file_delivery.dart';
-import '../../services/import_service.dart';
-import '../../services/notification_service.dart';
 import '../../ui/snack.dart';
 import '../../ui/theme/app_theme.dart';
+import '../import/restore_flow.dart';
 
 /// 备份与恢复（低频页面，与「导出」「回收站」同级）。
 ///
@@ -116,69 +115,10 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   }
 
   Future<void> _restoreContent(String content) async {
-    final overwrite = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('怎么恢复？'),
-        content: const Text('合并：只补本地没有或更旧的记录，安全。\n覆盖：清空后写入，需要二次确认。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('合并'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('覆盖'),
-          ),
-        ],
-      ),
-    );
-    if (overwrite == null || !mounted) return;
-
-    if (overwrite) {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('确认覆盖？'),
-          content: const Text('会清空当前所有任务与清单，且无法撤销。建议先导出一份备份。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(ctx).colorScheme.error,
-              ),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('覆盖'),
-            ),
-          ],
-        ),
-      );
-      if (ok != true) return;
-    }
-
     setState(() => _busy = true);
     try {
-      if (overwrite) await NotificationService.instance.cancelAll();
-      final result = await ref
-          .read(importServiceProvider)
-          .importJson(content, overwrite: overwrite);
-      if (overwrite) {
-        await ref.read(taskRepositoryProvider).rescheduleAll();
-      }
+      await showRestoreFlow(context, ref, content);
       await _refreshBackups();
-      if (mounted) showInfoSnack(context, result.summary);
-    } on ImportException catch (e) {
-      if (mounted) showInfoSnack(context, e.message);
-    } catch (e) {
-      debugPrint('import failed: $e');
-      if (mounted) showInfoSnack(context, '导入失败，再试一次');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -257,6 +197,17 @@ class _BackupPageState extends ConsumerState<BackupPage> {
             title: const Text('选择备份文件…'),
             subtitle: const Text('合并或覆盖导入（可选任意文件，内容会校验）'),
             onTap: _busy ? null : _restore,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              '找不到文件？在微信 / QQ 里长按备份文件 → 用其他应用打开（或分享）→ 朝夕，'
+              '会直接进恢复，不用经过系统文件选择器。',
+              style: TextStyle(
+                fontSize: 12,
+                color: context.colors.onSurfaceVariant,
+              ),
+            ),
           ),
           const Divider(height: 36),
 
