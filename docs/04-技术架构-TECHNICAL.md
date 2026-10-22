@@ -167,7 +167,7 @@ macOS 沙盒下，`Info.plist` 声明**不够**，还必须在 `*.entitlements` 
 | 同上 | `com.apple.security.files.user-selected.read-write` | 用户选定的导出/备份目录 |
 | 同上 | `com.apple.security.files.bookmarks.app-scope` | 持久化目录授权 |
 
-`Info.plist` 另需 `NSMicrophoneUsageDescription`、`NSSpeechRecognitionUsageDescription`。
+`Info.plist` **不需要**麦克风 / 语音识别描述（语音输入已于 2026-10-18 移除）。
 
 **目录授权（security-scoped bookmark）**——这是必踩坑：
 
@@ -179,6 +179,27 @@ macOS 沙盒下，`Info.plist` 声明**不够**，还必须在 `*.entitlements` 
 ```
 
 `settings.backup_dir` 只作为展示用路径，真正授权以 bookmark 为准。
+
+### 5.3 离线保证（由 CI 守住）
+
+「数据不出本机」不能只写在文档里，已经落成可执行的检查：
+
+| 层 | 现状 | 谁在守 |
+|---|---|---|
+| Android release 权限 | 只有 `POST_NOTIFICATIONS` / `SCHEDULE_EXACT_ALARM` / `RECEIVE_BOOT_COMPLETED`（外加通知库自带的 `VIBRATE`），**没有 `INTERNET` / `ACCESS_NETWORK_STATE`** | `tool/check_offline.sh`，android job 每次构建后跑 |
+| macOS release entitlements | 沙盒 + 用户所选文件读写 + bookmark，**没有 `network.client` / `network.server`** | 同一脚本的静态检查 |
+| Dart 代码与依赖 | 无 http / dio / socket / analytics；`pubspec.yaml` 里没有联网包 | 人工评审 + 依赖审查 |
+
+> `android/app/src/debug|profile/AndroidManifest.xml` 里的 `INTERNET` 是 Flutter 调试工具链（热重载 / DevTools）要的，**不会进 release 包**；`DebugProfile.entitlements` 里的 `network.server` 同理，只服务本机调试连接。
+
+自查：
+
+```bash
+cd app
+REQUIRE_APK=1 tool/check_offline.sh   # 非 0 退出 = 有人加了网络权限
+```
+
+CI 里这一步失败会直接标红并挡住 artifact 上传，所以"哪天顺手引入联网"不会悄悄发生。
 
 ---
 
