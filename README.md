@@ -60,7 +60,7 @@
 ```
 zhaoxi/
 ├── docs/     # 文档（产品 / 需求 / 功能 / 技术 / 数据 / 计划）
-└── app/      # Flutter 工程（待创建）
+└── app/      # Flutter 工程（Android 主 + macOS）
 ```
 
 ---
@@ -78,6 +78,8 @@ zhaoxi/
 > **签名**：Android 用固定的 release keystore（`android/key.properties` → `~/AIWork/.zhaoxi-signing/zhaoxi-release.jks`，已 gitignore）。
 > CI 通过 4 个 secrets 注入：`ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`。
 > ⚠️ **换签名后旧版无法覆盖升级**：先导出 JSON 备份 → 卸载旧版 → 安装新版 → 导入备份。
+
+> 本地打包（固定文件名、手机下载测试）见 [04 技术架构 · 十二、打包与分发](./docs/04-技术架构-TECHNICAL.md)。
 
 ## 开源协议
 

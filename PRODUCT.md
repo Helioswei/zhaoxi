@@ -65,7 +65,7 @@ android
 - 视觉现状已有代码级实现：三套风格令牌、实测达标色值（docs/03 §6.1）、思源宋体子集字体。
 - **约束说明**：docs/07 视觉规范与色值对后续 UI 工作是**参考资料而非硬约束**（用户 2026-10-21 确认），可在此基础上改进。
 - 没有用户访谈、评分、媒体评价类证据；未来工作**不得编造**此类内容。
-- 68 例单元测试（`app/test/`）与 CI 构建（`.github/workflows/build.yml`）可作技术验证。
+- `app/test/` 单元测试全绿（`flutter test`），配合 CI 构建（`.github/workflows/build.yml`）可作技术验证。
 
 ## Product Principles
 

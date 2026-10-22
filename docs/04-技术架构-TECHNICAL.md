@@ -280,12 +280,50 @@ macOS 沙盒下，`Info.plist` 声明**不够**，还必须在 `*.entitlements` 
 
 ## 十二、打包与分发
 
-### Android
+### Android 本地打包（固定文件名，永远覆盖最新）
 
 ```bash
-flutter build apk --release          # 或 --split-per-abi 减小体积
+cd app
+flutter build apk --release --split-per-abi   # 日常真机测试（arm64 约 24 MB）
+flutter build apk --release                   # 通用包：含全部 ABI，约 70 MB
 ```
-侧载安装（允许"未知来源"）。可自建静态目录放 APK，手机浏览器下载。
+
+产物固定在 `app/build/app/outputs/flutter-apk/`，名字由 Flutter 决定：
+
+| 文件 | 用途 |
+|---|---|
+| `app-arm64-v8a-release.apk` | 主流真机，**日常测试下这个** |
+| `app-armeabi-v7a-release.apk` | 老 32 位机型 |
+| `app-x86_64-release.apk` | 模拟器 |
+| `app-release.apk` | 通用包（只在没带 `--split-per-abi` 时产出） |
+
+**命名规则**
+
+1. **不重命名、不加日期、不复制副本。** 每次构建同名覆盖，所以下载地址永久不变，手机上收藏一次即可。
+2. 构建会顺带生成同名 `.sha1`（40 位十六进制、无换行，内容就是该 APK 的 SHA-1），随包自动刷新，不手工维护。
+3. 只有要留旧版做对比时才归档，且**用版本号命名，不用日期**——同一天重打两次，带日期反而分不清：
+
+   ```bash
+   mkdir -p archive
+   cp app-arm64-v8a-release.apk "archive/zhaoxi-1.0.0+2001-arm64.apk"
+   ```
+
+**versionCode 注意（换包类型会踩）**
+
+- 通用包：等于 `pubspec.yaml` 里的 build number（`version: 1.0.0+1` → `1`）。
+- `--split-per-abi` 会按 ABI 加偏移：armeabi-v7a `1001` / arm64-v8a `2001` / x86_64 `4001`。
+- 所以**先装 split 包、再装回通用包会被当成降级而装不上**（2001 → 1）。测试阶段固定用同一种包；确实要换，先导出 JSON 备份 → 卸载 → 装新包 → 导入。
+
+**手机下载**
+
+本机在产物目录起静态服务，手机连同一个 Wi-Fi：
+
+```bash
+cd app/build/app/outputs/flutter-apk
+python3 -m http.server 8899 --bind 0.0.0.0
+```
+
+手机浏览器打开 `http://<本机 IP>:8899/app-arm64-v8a-release.apk`。该服务会给正确的 MIME（`application/vnd.android.package-archive`），点开即安装；侧载需允许「未知来源」。覆盖安装的前提是签名与已装版本一致（见下节）。
 
 ### Android 签名
 
