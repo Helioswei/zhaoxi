@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/db/database.dart';
+import '../../domain/recycle_policy.dart';
 import '../../providers/app_providers.dart';
 import '../../ui/snack.dart';
 import '../../ui/theme/app_theme.dart';
@@ -73,6 +74,9 @@ class RecycleBinPage extends ConsumerWidget {
     final t = context.tokens;
     final when = DateFormat('M月d日 HH:mm')
         .format(DateTime.fromMillisecondsSinceEpoch(task.updatedAt));
+    // 软删除时间记在 updatedAt 上，清理规则见 domain/recycle_policy.dart。
+    final daysLeft = daysUntilPurge(task.updatedAt);
+    final leftText = daysLeft == 0 ? '今天会被清理' : '还剩 $daysLeft 天';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
@@ -99,8 +103,12 @@ class RecycleBinPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '删除于 $when',
-                      style: TextStyle(fontSize: 12, color: t.textSecondary),
+                      '删除于 $when · $leftText',
+                      style: TextStyle(
+                        fontSize: 12,
+                        // 快到期时用陶红提个醒；平时还是次级文字。
+                        color: daysLeft <= 3 ? t.danger : t.textSecondary,
+                      ),
                     ),
                   ],
                 ),

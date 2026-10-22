@@ -139,7 +139,7 @@ class TaskTile extends ConsumerWidget {
                               Padding(
                                 padding: const EdgeInsets.only(right: 4),
                                 child: Text(
-                                  '↻ ${repeat.freq.label}',
+                                  '↻ ${repeat.shortLabel}',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: t.textSecondary,

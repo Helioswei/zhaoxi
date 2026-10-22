@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../domain/recycle_policy.dart' as policy;
 import '../../domain/repeat_rule.dart';
 import '../../domain/sort_order.dart';
 import '../../domain/task_filter.dart';
@@ -202,8 +203,8 @@ class TaskRepository {
 
   Stream<List<Task>> watchDeleted() => _db.taskDao.watchDeleted();
 
-  /// 回收站保留天数：超过就自动清理。
-  static const recycleRetentionDays = 40;
+  /// 回收站保留天数：超过就自动清理（规则和显示共用 domain 里的常量）。
+  static const recycleRetentionDays = policy.recycleRetentionDays;
 
   /// 全局搜索（标题 / 备注）。
   Stream<List<Task>> search(String query, {String? listId}) =>

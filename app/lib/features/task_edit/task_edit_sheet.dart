@@ -394,6 +394,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
                               ),
                             ),
                             _repeatChip('每月', () => RepeatRule.monthly()),
+                            _repeatIntervalChip(),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -469,6 +470,81 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
         ),
       ),
     );
+  }
+
+  /// T-5：「每 N 天」的入口。数据层早就有（`RepeatRule.everyDays`），这里补 UI。
+  ///
+  /// 选中后芯片直接显示「每 3 天」，不用另外再弹一次确认。
+  Widget _repeatIntervalChip() {
+    final days = _repeat?.freq == RepeatFreq.interval
+        ? _repeat!.intervalDays
+        : null;
+    return ChoiceChip(
+      label: Text(days == null ? '每 N 天' : '每 $days 天'),
+      selected: days != null,
+      onSelected: (_) => _pickInterval(days),
+    );
+  }
+
+  Future<void> _pickInterval(int? current) async {
+    // 常用值一点就好；当前值不在表里时补进去，免得编辑已有任务时选不到。
+    final options = <int>{
+      2, 3, 4, 5, 6, 7, 10, 14, 30,
+      ?current,
+    }.toList()..sort();
+
+    // 弹层关掉后焦点会回到标题输入框、把键盘顶出来，先手动收一次。
+    FocusManager.instance.primaryFocus?.unfocus();
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: context.colors.surface,
+      showDragHandle: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(context.tokens.sheetRadius),
+        ),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '隔几天重复？',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '比如「每 2 天浇花」：勾完这一条，隔 2 天再提醒。',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final d in options)
+                    ChoiceChip(
+                      label: Text('$d 天'),
+                      selected: d == current,
+                      onSelected: (_) => Navigator.pop(ctx, d),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (picked == null || !mounted) return;
+    setState(() => _repeat = RepeatRule.everyDays(picked));
   }
 
   Widget _repeatChip(String label, RepeatRule Function() build) {

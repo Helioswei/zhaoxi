@@ -92,6 +92,10 @@ class RepeatRule {
 
   // ------------------------------------------------------------------ 推进
 
+  /// 界面上的短标签：`interval` 要带上具体天数（「每 2 天」），其余直接用枚举文案。
+  String get shortLabel =>
+      freq == RepeatFreq.interval ? '每 $intervalDays 天' : freq.label;
+
   /// 从 [from] 起，**after 之后第一个**符合规则的时间点。
   ///
   /// 逾期多期不逐格补，直接跳到下一个未来点（见 02 §2.4.2）。
