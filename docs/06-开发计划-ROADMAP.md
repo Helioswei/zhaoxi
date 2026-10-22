@@ -101,7 +101,7 @@
 
 | # | 任务 | 需求 ID | 优先级 | 状态 |
 |---|---|---|---|---|
-| 4.1 | macOS 沙盒 entitlements + 文件权限 + bookmark | — | P1 | ⏳ 文件权限已配；bookmark 与构建待 Xcode |
+| 4.1 | macOS 沙盒 entitlements + 文件权限 + bookmark | — | P1 | 🔄 entitlements / 文件权限已配；**CI 构建通过**（4m2s）；`security-scoped bookmark` 未实现（自动备份走应用私有目录，够用）；本机构建仍需 Xcode |
 | 4.2 | **视图管理**（显示/排序/重命名，锁定“全部/已完成”） | US-028 | P1 | ✅ |
 | 4.2b | **清单管理**（改名/改色；内置不可删；自定义可增删+迁移任务） | — | P1 | ✅ |
 | 4.3 | 搜索（列表内，标题 + 备注） | US-020 | P1 | ✅ |
