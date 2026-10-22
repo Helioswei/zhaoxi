@@ -20,8 +20,13 @@ class MainActivity : FlutterActivity() {
     /** 收到文件后主动通知 Flutter（App 在前台时也能立刻响应）。 */
     private var shareChannel: MethodChannel? = null
 
+    /** 自研文件列表的目录授权与遍历（方案 C）。 */
+    private val treeBrowser by lazy { TreeBrowserChannel(this) }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        treeBrowser.attach(flutterEngine)
 
         val share = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -49,6 +54,11 @@ class MainActivity : FlutterActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         captureShare(intent)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (treeBrowser.onActivityResult(requestCode, resultCode, data)) return
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     /** 把收到的文件（分享 / 用其他应用打开）读成文本。 */

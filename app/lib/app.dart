@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/export/backup_page.dart';
 import 'features/export/export_page.dart';
+import 'features/import/restore_files_page.dart';
 import 'features/import/restore_flow.dart';
 import 'features/settings/list_manage_page.dart';
 import 'features/settings/recycle_bin_page.dart';
@@ -126,6 +127,7 @@ class _ZhaoxiAppState extends ConsumerState<ZhaoxiApp>
         SettingsPage.routeName: (_) => const SettingsPage(),
         ExportPage.routeName: (_) => const ExportPage(),
         BackupPage.routeName: (_) => const BackupPage(),
+        RestoreFilesPage.routeName: (_) => const RestoreFilesPage(),
         ViewManagePage.routeName: (_) => const ViewManagePage(),
         ListManagePage.routeName: (_) => const ListManagePage(),
         RecycleBinPage.routeName: (_) => const RecycleBinPage(),

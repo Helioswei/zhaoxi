@@ -2,15 +2,19 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 
+import '../../data/dao/settings_dao.dart';
 import '../../providers/app_providers.dart';
 import '../../services/backup_service.dart';
 import '../../services/file_delivery.dart';
+import '../../services/tree_source.dart';
 import '../../ui/snack.dart';
 import '../../ui/theme/app_theme.dart';
+import '../import/restore_files_page.dart';
 import '../import/restore_flow.dart';
 
 /// 备份与恢复（低频页面，与「导出」「回收站」同级）。
@@ -33,10 +37,26 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   bool _loadFailed = false;
   List<File> _backups = const [];
 
+  /// 已授权的备份文件夹：写（存到文件夹）和读（从文件恢复）用的是同一个。
+  String? _treeUri;
+  String _treeName = '';
+
   @override
   void initState() {
     super.initState();
     _refreshBackups();
+    _loadFolder();
+  }
+
+  Future<void> _loadFolder() async {
+    final dao = ref.read(databaseProvider).settingsDao;
+    final uri = await dao.get(SettingsKeys.restoreTreeUri);
+    final name = await dao.get(SettingsKeys.restoreTreeName);
+    if (!mounted) return;
+    setState(() {
+      _treeUri = (uri == null || uri.isEmpty) ? null : uri;
+      _treeName = name ?? '文件夹';
+    });
   }
 
   Future<void> _refreshBackups() async {
@@ -68,6 +88,11 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   }
 
   Future<void> _exportJson({required bool toFile}) async {
+    // Android 上「存到文件夹」= 直接写进已授权的备份文件夹，不弹系统对话框。
+    if (toFile && Platform.isAndroid) {
+      await _saveToFolder();
+      return;
+    }
     setState(() => _busy = true);
     try {
       final json = await ref.read(exportServiceProvider).buildBackupJson();
@@ -85,6 +110,47 @@ class _BackupPageState extends ConsumerState<BackupPage> {
     } catch (e) {
       debugPrint('export backup failed: $e');
       if (mounted) showInfoSnack(context, '导出失败，再试一次');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// 存进已授权的备份文件夹（Android）。没有授权过就先选一次，选完接着存。
+  Future<void> _saveToFolder() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      if (_treeUri == null) {
+        final picked = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => const RestoreFilesPage(pickOnly: true),
+          ),
+        );
+        if (!mounted) return;
+        await _loadFolder();
+        if (picked != true || _treeUri == null) return;
+      }
+      final json = await ref.read(exportServiceProvider).buildBackupJson();
+      final saved = await TreeSource.createFile(
+        treeUri: _treeUri!,
+        name: _jsonName,
+        content: json,
+        mimeType: 'application/json',
+      );
+      if (saved == null || !mounted) return;
+      showInfoSnack(context, '已保存到「$_treeName」');
+    } on PlatformException catch (e) {
+      debugPrint('save to folder failed: ${e.code} ${e.message}');
+      if (!mounted) return;
+      showInfoSnack(
+        context,
+        e.code == 'no_write'
+            ? '这个文件夹不让写，换一个（选「下载」里的子文件夹）'
+            : '保存失败，换一个文件夹再试',
+      );
+    } catch (e) {
+      debugPrint('save to folder failed: $e');
+      if (mounted) showInfoSnack(context, '保存失败，再试一次');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -109,9 +175,19 @@ class _BackupPageState extends ConsumerState<BackupPage> {
   }
 
   Future<void> _restore() async {
-    final content = await pickTextFile();
-    if (content == null || !mounted) return;
-    await _restoreContent(content);
+    // 自研文件列表只为绕开 Android 系统选择器不显示文件名的问题（见 docs/08 D-7）。
+    // 其他平台的选择器本来就正常，直接用，省掉两步无意义的点击。
+    if (!Platform.isAndroid) {
+      final content = await pickTextFile();
+      if (content == null || !mounted) return;
+      await _restoreContent(content);
+      return;
+    }
+    await Navigator.of(context).pushNamed(RestoreFilesPage.routeName);
+    if (!mounted) return;
+    // 用户可能在里面换了文件夹，回来后按钮文案要跟着变。
+    await _loadFolder();
+    await _refreshBackups();
   }
 
   Future<void> _restoreContent(String content) async {
@@ -175,14 +251,18 @@ class _BackupPageState extends ConsumerState<BackupPage> {
               width: double.infinity,
               child: TextButton(
                 onPressed: _busy ? null : () => _exportJson(toFile: true),
-                child: const Text('存到文件夹…'),
+                child: Text(
+                  _treeUri == null ? '存到文件夹…' : '存到「$_treeName」',
+                ),
               ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Text(
-              '包含全部任务（含已删除）与清单；不含设备标识。可用于换手机 / 恢复误删。',
+              _treeUri == null
+                  ? '包含全部任务（含已删除）与清单；不含设备标识。可用于换手机 / 恢复误删。'
+                  : '直接写进「$_treeName」，保存后可在「从文件恢复」里找到它。',
               style: TextStyle(
                 fontSize: 12,
                 color: context.colors.onSurfaceVariant,
@@ -195,7 +275,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
           ListTile(
             leading: const Icon(Icons.restore),
             title: const Text('选择备份文件…'),
-            subtitle: const Text('合并或覆盖导入（可选任意文件，内容会校验）'),
+            subtitle: const Text('挑一份备份，合并或覆盖都行'),
             onTap: _busy ? null : _restore,
           ),
           Padding(

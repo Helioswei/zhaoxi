@@ -19,6 +19,8 @@ class SettingsKeys {
   static const lastBackupDate = 'last_backup_date';
   static const fontScale = 'font_scale';
   static const style = 'app_style';
+  static const restoreTreeUri = 'restore_tree_uri';
+  static const restoreTreeName = 'restore_tree_name';
 }
 
 @DriftAccessor(tables: [SettingsEntries])
