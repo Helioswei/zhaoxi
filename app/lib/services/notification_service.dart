@@ -35,7 +35,9 @@ class NotificationService implements ReminderScheduler {
     }
 
     const settings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      // 通知小图标必须是单色（Android 会把它当蒙版着色）；
+      // 用彩色 launcher 图标会在通知栏里变成一个灰方块（T-10）。
+      android: AndroidInitializationSettings('ic_notification'),
       macOS: DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
