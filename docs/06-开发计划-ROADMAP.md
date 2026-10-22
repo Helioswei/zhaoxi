@@ -46,7 +46,7 @@
 | 0.7 | 完成 / 取消完成 + 撤销 | US-005/006 | P0 | ✅ |
 | 0.8 | 删除（软删）+ 撤销 | US-008 | P0 | ✅ |
 | 0.9 | **浅色主题** + 基础组件库（深色模式延后到 M4） | — | P0 | ✅ |
-| 0.10 | Android 构建 + 真机安装；**顺手跑通一次 macOS 构建** | — | P0 | Android APK ✅ / 真机 ⏳ / macOS ⏳（缺 Xcode） |
+| 0.10 | Android 构建 + 真机安装；**顺手跑通一次 macOS 构建** | — | P0 | Android APK ✅ / 真机 ✅（2026-10 装 v1.0.0 实测）/ macOS 产物 ✅（CI 出包，本机仍需 Xcode） |
 
 > **M0 实现注记**：代码在 `app/`，包名 `com.helioswei.zhaoxi`；Drift 三表 + DAO + Repository + `domain/day_boundary.dart`（本地时区日界，周一起算）；单测 `test/day_boundary_test.dart`（7 用例全过）；提醒按钮已放占位（M1 接入）。
 
@@ -63,7 +63,7 @@
 | 1.3 | 保存/完成/删除/撤销 时同步取消与排程（含 `notif_id` 分配） | US-009/010 | P0 | ✅ |
 | 1.4 | 点通知跳转到对应任务 | US-010 | P0 | ✅（运行中 + 冷启动） |
 | 1.5 | 日期型任务默认 09:00 提醒（含设置项） | US-009 | P0 | ✅ |
-| 1.6 | 拖拽排序 + `sort_order` 精度重排（renormalize） | US-018 | P1 | ⏳ 延后到 M4（「全部」视图分组后，需先定“组内/跨组”拖拽规则） |
+| 1.6 | 拖拽排序 + `sort_order` 精度重排（renormalize） | US-018 | P1 | → 已移入 M4，由 **4.10** 完成（组内拖拽 + renormalize） |
 | 1.7 | 默认提醒偏移设置（准时/5/15/30 分） | — | P1 | ✅ |
 
 > **M1 实现注记**：`services/notification_service.dart`（渠道/权限/精确闹钟降级）+ `services/reminder_scheduler.dart`（抽象，便于测试）；设置页可看权限状态与默认提前量；单测 `test/reminder_test.dart`（7 例：排程/取消/重启重排/notif_id 按需分配）。
@@ -88,7 +88,7 @@
 | 3.3 | Markdown 导出（**按周分节 + 未完成章节**，Obsidian 兼容） | US-015/027 | P0 | ✅ |
 | 3.4 | PDF 导出（TrueType 中文字体子集，同一套排版） | US-013/027 | P0 | ✅ |
 | 3.5 | **落盘：`share_plus`（分享）/ `file_picker`（另存为）** | US-013~016 | P0 | ✅ |
-| 3.6 | 自动备份 + macOS security-scoped bookmark | US-017 | P1 | ⏳ 留到 M4（P1；需目录授权与保留策略） |
+| 3.6 | 自动备份 + macOS security-scoped bookmark | US-017 | P1 | → 每日自动备份由 **4.11** 完成；「用户自选目录 + bookmark」仍未做（见 4.1） |
 | 3.7 | 设置页“数据”分组全部入口 | — | P0 | ✅ |
 
 > **M3 实现注记**：`services/export_service.dart`（范围/清单/分组 + Markdown/PDF/JSON）、`services/import_service.dart`（校验/合并/覆盖）、`services/file_delivery.dart`（系统面板）；PDF 用 `assets/fonts/ZhaoxiSerif-Regular.ttf`（思源宋体 TrueType 子集，由 `tool/build_pdf_font.py` 生成，SIL OFL-1.1）；单测 `test/export_import_test.dart`（11 例）。
@@ -105,10 +105,10 @@
 | 4.2 | **视图管理**（显示/排序/重命名，锁定“全部/已完成”） | US-028 | P1 | ✅ |
 | 4.2b | **清单管理**（改名/改色；内置不可删；自定义可增删+迁移任务） | — | P1 | ✅ |
 | 4.3 | 搜索（列表内，标题 + 备注） | US-020 | P1 | ✅ |
-| 4.4 | 键盘快捷键（`⌘N` / `Ctrl+N` / `/` 搜索 / `Esc`） | — | P1 | ✅ 代码已写，待桌面验证 |
+| 4.4 | 键盘快捷键（`⌘N` / `Ctrl+N` / `/` 搜索 / `Esc`） | — | P1 | 🔄 代码已写；macOS 包 CI 可出（ad-hoc 签名），待真机验证 |
 | 4.5 | 深色模式 | US-021 | P1 | ✅ |
 | 4.6 | 重复任务（**原地推进**，含通知重排） | US-019 | P1 | ✅ |
-| 4.7 | 图标与启动页 | — | P1 | 🔄 图标 ✅（`tool/make_icon.py`）；启动页待做 |
+| 4.7 | 图标与启动页 | — | P1 | ✅ 图标（`tool/make_icon.py`）+ 启动页（奶油纸底 + 朝标，深浅两套） |
 | 4.8 | 无障碍抽查（字号/点击区/对比度复核） | — | P1 | ✅ 新增「大字号」（系统缩放 ×1.2） |
 | 4.9 | 单元测试补齐 | — | P1 | ✅ `app/test/` 全绿 |
 | 4.10 | （自 M1.6 移入）拖拽排序（**组内**）+ renormalize | US-018 | P1 | ✅ |
