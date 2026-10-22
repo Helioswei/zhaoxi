@@ -308,7 +308,10 @@ void main() {
     final docXml =
         utf8.decode(z1.findFile('word/document.xml')!.content as List<int>);
     expect(docXml, contains('完成方案评审'));
-    expect(docXml, contains('记录'));
+    // 标题用「记录」，页眉的清单字段写「全部」——这两个不能混（曾经都印成「记录」）。
+    expect(docXml, contains('记录 · '));
+    expect(docXml, contains('清单：全部'));
+    expect(docXml, isNot(contains('清单：记录')));
 
     final xlsx = await export.toXlsx(bundle, now: now);
     final z2 = ZipDecoder().decodeBytes(xlsx);

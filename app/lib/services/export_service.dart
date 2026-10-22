@@ -395,11 +395,17 @@ class ExportService {
   }
 
   String _title(ExportBundle b) =>
-      '${_listLabel(b)} · ${b.options.periodLabel()}';
+      '${_titleLabel(b)} · ${b.options.periodLabel()}';
 
+  /// 文档标题里的主体：不选清单时叫「记录」，选了清单就用清单名。
+  String _titleLabel(ExportBundle b) =>
+      b.options.listId == null ? '记录' : _listLabel(b);
+
+  /// 页眉「清单：xxx」里的取值：不选清单就是「全部」。
   String _listLabel(ExportBundle b) {
-    if (b.options.listId == null) return '记录';
-    return b.lists[b.options.listId]?.name ?? '记录';
+    // 没选清单 = 全部，不能印成「记录」——那是文档标题，不是清单名。
+    if (b.options.listId == null) return '全部';
+    return b.lists[b.options.listId]?.name ?? '全部';
   }
 
   static String _d(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
