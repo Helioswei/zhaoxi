@@ -7,6 +7,14 @@
         android:label="朝夕"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!--
+          通知小图标只在 Dart 里按字符串引用，release 的资源裁剪会把它删掉；
+          这里从 manifest 引用一次，确保它被打进包里（配合 res/raw/keep.xml）。
+        -->
+        <meta-data
+            android:name="com.helioswei.zhaoxi.notification_icon"
+            android:resource="@drawable/ic_notification" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

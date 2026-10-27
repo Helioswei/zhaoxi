@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  通知小图标只在 Dart 里用字符串引用（AndroidInitializationSettings('ic_notification')），
+  release 构建的资源裁剪会把它当无用资源删掉，运行时就会报 invalid_icon。
+  这里显式保住它。
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_notification" />

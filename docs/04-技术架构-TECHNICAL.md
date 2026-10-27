@@ -309,6 +309,18 @@ flutter build apk --release --split-per-abi   # 日常真机测试（arm64 约 2
 flutter build apk --release                   # 通用包：含全部 ABI，约 70 MB
 ```
 
+**一条命令（推荐）**：
+
+```bash
+cd app
+./tool/build_release.sh            # 构建 + 校验（图标资源、离线权限）
+./tool/build_release.sh --smoke    # 再装到设备上确认能进首页
+```
+
+脚本会依次做：`pub get`（构建不带 `--no-pub`）→ 构建 → **校验 APK 里真有
+`ic_notification`** → 离线守卫 → （`--smoke`）装机启动并扫未捕获异常。
+两道校验都是踩过坑才加的，见 `tool/build_release.sh` 顶部注释。
+
 产物固定在 `app/build/app/outputs/flutter-apk/`，名字由 Flutter 决定：
 
 | 文件 | 用途 |
