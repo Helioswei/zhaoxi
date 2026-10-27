@@ -20,6 +20,7 @@ App 内部流程用 **integration_test** 驱动（按控件找、真实点击，
 cd app
 ./tool/acceptance/run_app_flow.sh      # 新建任务 → 提醒落库 → 系统有闹钟
 ./tool/acceptance/run_backup_flow.sh   # 立即备份 → 从本机备份恢复
+./tool/acceptance/run_next_week.sh     # 回归：「下周」不能算到过去
 ```
 
 两个脚本都是「跑 integration_test + 在 App 外补断言 + 清理」。
@@ -65,4 +66,6 @@ cd app
 | `lib.sh` | adb / 数据库辅助函数（拉库、查值、截图） |
 | `db_query.py` | 对拉下来的 sqlite 跑一句查询 |
 | `../../integration_test/task_flow_test.dart` | 新建任务的真实点击流程 |
+| `../../integration_test/next_week_test.dart` | 「下周」日期回归 |
+| `../../integration_test/ui_regressions_test.dart` | 时间选择、长按拖拽的回归 |
 | `../../test_driver/integration_test.dart` | `flutter drive` 的驱动入口 |

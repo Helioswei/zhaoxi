@@ -304,7 +304,8 @@ class _TaskListBody extends ConsumerWidget {
           );
         }
         final task = row as Task;
-        return ReorderableDragStartListener(
+        // 长按才进入拖拽：直接拖会把「上滑看内容」变成「移动任务」。
+        return ReorderableDelayedDragStartListener(
           key: ValueKey('t-${task.id}'),
           index: index,
           child: _tile(context, byId, task),

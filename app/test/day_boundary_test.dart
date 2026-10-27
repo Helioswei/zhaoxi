@@ -57,4 +57,24 @@ void main() {
       isFalse,
     );
   });
+  group('快捷日期（明天 / 后天 / 下周）', () {
+    test('周五点「下周」得到下周一，不是本周一', () {
+      final friday = DateTime(2026, 10, 30); // 周五
+      final nextWeek = DayBounds(friday).quickDay(nextWeek: true);
+      expect(nextWeek, DateTime(2026, 11, 2)); // 下周一
+      expect(nextWeek.isAfter(friday), isTrue, reason: '不能落在过去');
+    });
+
+    test('周日点「下周」也是下周一', () {
+      final sunday = DateTime(2026, 11, 1);
+      expect(DayBounds(sunday).quickDay(nextWeek: true), DateTime(2026, 11, 2));
+    });
+
+    test('明天 / 后天相对今天', () {
+      final b = DayBounds(DateTime(2026, 10, 30));
+      expect(b.quickDay(offsetDays: 1), DateTime(2026, 10, 31));
+      expect(b.quickDay(offsetDays: 2), DateTime(2026, 11, 1));
+    });
+  });
+
 }

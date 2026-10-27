@@ -26,6 +26,15 @@ class DayBounds {
   DateTime get nextWeekStart =>
       DateTime(weekStart.year, weekStart.month, weekStart.day + 7);
 
+  /// 「明天 / 后天 / 下周」这类快捷日期。
+  ///
+  /// [nextWeek] 表示「下一个周一」——注意不是 [weekStart]（本周一），
+  /// 周五点「下周」如果用了本周一，日期会落到过去，任务一建出来就是逾期。
+  DateTime quickDay({int offsetDays = 0, bool nextWeek = false}) {
+    final base = nextWeek ? nextWeekStart : todayStart;
+    return DateTime(base.year, base.month, base.day + offsetDays);
+  }
+
   DateTime get monthStart => DateTime(now.year, now.month, 1);
 
   /// Dart 会自动把 month=13 归一化到次年 1 月。

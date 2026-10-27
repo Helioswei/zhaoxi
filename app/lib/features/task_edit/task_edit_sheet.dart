@@ -125,19 +125,82 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     final dueAt = _dueAt;
     if (dueAt == null) return;
     final due = DateTime.fromMillisecondsSinceEpoch(dueAt);
-    final picked = await showTimePicker(
+
+    // 常用时间点直接点；「自定义」才进时间选择器，而且是**输入模式**——
+    // 圆盘转起来太费劲（实测反馈）。
+    var custom = false;
+    final picked = await showModalBottomSheet<TimeOfDay>(
       context: context,
-      initialTime: TimeOfDay(hour: due.hour, minute: due.minute),
-      helpText: '选择时间',
+      backgroundColor: context.colors.surface,
+      showDragHandle: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(context.tokens.sheetRadius),
+        ),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '几点？',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final t in const [
+                    TimeOfDay(hour: 8, minute: 0),
+                    TimeOfDay(hour: 9, minute: 0),
+                    TimeOfDay(hour: 12, minute: 0),
+                    TimeOfDay(hour: 18, minute: 0),
+                    TimeOfDay(hour: 21, minute: 0),
+                  ])
+                    ChoiceChip(
+                      label: Text(_hm(DateTime(2000, 1, 1, t.hour, t.minute))),
+                      selected: due.hour == t.hour && due.minute == t.minute,
+                      onSelected: (_) => Navigator.pop(ctx, t),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  custom = true;
+                  Navigator.pop(ctx);
+                },
+                child: const Text('自定义时间…'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-    if (picked == null) return;
+
+    TimeOfDay? result = picked;
+    if (custom) {
+      if (!mounted) return;
+      result = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay(hour: due.hour, minute: due.minute),
+        helpText: '选择时间',
+        initialEntryMode: TimePickerEntryMode.input,
+      );
+    }
+    final chosen = result;
+    if (chosen == null || !mounted) return;
     setState(() {
       _dueAt = DateTime(
         due.year,
         due.month,
         due.day,
-        picked.hour,
-        picked.minute,
+        chosen.hour,
+        chosen.minute,
       ).millisecondsSinceEpoch;
       _dueHasTime = true;
     });
@@ -345,7 +408,7 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
                             _quickDateChip('今天', 0),
                             _quickDateChip('明天', 1),
                             _quickDateChip('后天', 2),
-                            _quickDateChip('下周', 0, fromWeekStart: true),
+                            _quickDateChip('下周', 0, nextWeek: true),
                             ActionChip(
                               label: const Text('选…'),
                               onPressed: _pickDate,
@@ -580,12 +643,10 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
   Widget _quickDateChip(
     String label,
     int offsetDays, {
-    bool fromWeekStart = false,
+    bool nextWeek = false,
   }) {
-    final bounds = DayBounds();
-    final base = fromWeekStart ? bounds.weekStart : bounds.todayStart;
-    final day = DateTime(base.year, base.month, base.day + offsetDays);
-    final dayMs = DateTime(day.year, day.month, day.day).millisecondsSinceEpoch;
+    final day = DayBounds().quickDay(offsetDays: offsetDays, nextWeek: nextWeek);
+    final dayMs = day.millisecondsSinceEpoch;
     final selected =
         !_dueHasTime &&
         _dueAt != null &&
