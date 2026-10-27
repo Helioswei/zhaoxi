@@ -18,8 +18,11 @@ App 内部流程用 **integration_test** 驱动（按控件找、真实点击，
 
 ```bash
 cd app
-./tool/acceptance/run_app_flow.sh
+./tool/acceptance/run_app_flow.sh      # 新建任务 → 提醒落库 → 系统有闹钟
+./tool/acceptance/run_backup_flow.sh   # 立即备份 → 从本机备份恢复
 ```
+
+两个脚本都是「跑 integration_test + 在 App 外补断言 + 清理」。
 
 它会：
 
@@ -38,6 +41,15 @@ cd app
    抢在保存之前把权限给上。
 2. **`flutter test` 跑完会卸载 App**，数据和闹钟都没了。所以用 `flutter drive`
    并加 `--keep-app-running`，跑完 App 还在，才能做系统侧断言。
+
+## 还没自动化的部分
+
+- **「存到文件夹」的导出**：需要先有一次「授权备份文件夹」，而那个授权页是系统的
+  目录选择器，integration_test 驱动不了。`backup_flow_test.dart` 里做了判断：
+  没授权就 `markTestSkipped`，不会假失败。首次手动授权一次即可：
+  设置 → 备份与恢复 → 从文件恢复 → 选择文件夹。
+- **完整换机演练**（导出 → `pm clear` → 导入）：中间那步 `pm clear` 会把
+  App 的授权一起清掉，导入又要重新走系统选择器，所以暂时只能手动。
 
 ## 加新流程
 
