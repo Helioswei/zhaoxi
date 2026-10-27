@@ -74,7 +74,22 @@ class NotificationService implements ReminderScheduler {
     );
   }
 
-  /// 申请通知 + 精确闹钟权限。返回通知权限是否拿到。
+  /// 只申请「通知」权限（保存任务时用）。
+  ///
+  /// 不在保存时顺手申请精确闹钟：那个权限会拉起系统「闹钟和提醒」页，
+  /// 用户拒过一次之后，每次保存都被弹进系统设置，非常烦（T-11）。
+  /// 精确闹钟只在用户主动点设置页的「去开启」时申请。
+  Future<bool> requestNotifications() async {
+    if (Platform.isAndroid) {
+      final android = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      final granted = await android?.requestNotificationsPermission();
+      return granted ?? true;
+    }
+    return requestPermissions();
+  }
+
+  /// 申请通知 + 精确闹钟权限（设置页的「去开启」用）。返回通知权限是否拿到。
   Future<bool> requestPermissions() async {
     var granted = true;
     if (Platform.isAndroid) {
@@ -102,6 +117,16 @@ class NotificationService implements ReminderScheduler {
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     return await android?.areNotificationsEnabled() ?? true;
+  }
+
+  /// 「精确提醒没开」的提示每次启动最多说一次，避免每保存一条就弹一次。
+  static bool _warnedExactAlarm = false;
+
+  /// 第一次调用返回 true（该提示了），之后返回 false。
+  bool consumeExactAlarmWarning() {
+    if (_warnedExactAlarm) return false;
+    _warnedExactAlarm = true;
+    return true;
   }
 
   /// 非 Android 平台视为可用。

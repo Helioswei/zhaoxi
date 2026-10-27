@@ -194,10 +194,19 @@ class _TaskEditSheetState extends ConsumerState<TaskEditSheet> {
     setState(() => _saving = true);
 
     final remindAt = _remindAt;
-    // 首次设置提醒时再申请权限；被拒就当场说清楚，别让人以为提醒会响。
-    final granted = await NotificationService.instance.requestPermissions();
+    // 保存时只申请「通知」权限；精确闹钟不在这里申请——
+    // 它会拉起系统设置页，用户拒过一次就会被反复弹进去（T-11）。
+    final granted = await NotificationService.instance.requestNotifications();
     if (!granted && mounted) {
       showInfoSnack(context, '提醒可能不会响：通知权限没打开，可在设置里开启');
+    } else {
+      final exact = await NotificationService.instance.canScheduleExact();
+      if (!exact &&
+          mounted &&
+          NotificationService.instance.consumeExactAlarmWarning()) {
+        // 降级要显式说出来，但不能每次保存都念一遍——每次启动最多提一次。
+        showInfoSnack(context, '精确提醒没开启，到点可能晚几分钟（设置里可开）');
+      }
     }
 
     final repo = ref.read(taskRepositoryProvider);

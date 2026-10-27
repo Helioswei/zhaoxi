@@ -35,10 +35,9 @@ cd app
 
 ## 两个坑（脚本里已经处理）
 
-1. **保存任务会请求权限**：`_save` 无条件调用 `requestPermissions()`，
-   没授权时会弹系统「通知权限」/「闹钟和提醒」页，测试会卡在那里。
-   `run_app_flow.sh` 在跑测试的同时循环 `pm grant` + `appops set SCHEDULE_EXACT_ALARM allow`，
-   抢在保存之前把权限给上。
+1. **保存任务会请求通知权限**：没授权时会弹系统权限框，测试会卡住。
+   `run_app_flow.sh` 在跑测试的同时循环 `pm grant`，抢在保存之前把权限给上。
+   （精确闹钟不会在这里申请了——见 docs/08 的 T-11。）
 2. **`flutter test` 跑完会卸载 App**，数据和闹钟都没了。所以用 `flutter drive`
    并加 `--keep-app-running`，跑完 App 还在，才能做系统侧断言。
 

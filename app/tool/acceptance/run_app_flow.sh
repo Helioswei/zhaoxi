@@ -25,8 +25,6 @@ TEST_PID=$!
 # 一边等测试，一边把通知权限塞进去（装包后立刻生效）
 while kill -0 "$TEST_PID" 2>/dev/null; do
   $ADB shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS >/dev/null 2>&1
-  # 精确闹钟：不设 allow 的话，保存任务会弹系统「闹钟和提醒」页，测试直接卡住
-  $ADB shell appops set "$PKG" SCHEDULE_EXACT_ALARM allow >/dev/null 2>&1
   sleep 0.3
 done
 wait "$TEST_PID"
