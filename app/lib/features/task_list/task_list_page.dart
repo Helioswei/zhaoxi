@@ -287,6 +287,8 @@ class _TaskListBody extends ConsumerWidget {
 
     return ReorderableListView.builder(
       buildDefaultDragHandles: false,
+      proxyDecorator: (child, index, animation) =>
+          taskDragProxy(child, animation, context.tokens.cardRadius),
       padding: const EdgeInsets.only(top: 4, bottom: 120),
       itemCount: rows.length,
       onReorderItem: (oldIndex, newIndex) =>
@@ -460,4 +462,31 @@ class _TaskListBody extends ConsumerWidget {
       _ => const AppEmptyState(emoji: '🗒️', text: '这里还没有内容'),
     };
   }
+}
+
+/// 拖拽时跟随手指的那张卡片。
+///
+/// Flutter 默认会套一层不透明 Material + elevation 6：卡片圆角、底色都会变样，
+/// 在奶油底上像一张白纸飘着。这里保留卡片原样，只加 1.5% 缩放和 2dp 轻投影，
+/// 符合「平面优先」。
+@visibleForTesting
+Widget taskDragProxy(Widget child, Animation<double> animation, double radius) {
+  return AnimatedBuilder(
+    animation: animation,
+    child: child,
+    builder: (context, child) {
+      final t = Curves.easeOut.transform(animation.value);
+      return Transform.scale(
+        scale: 1 + 0.015 * t,
+        child: Material(
+          key: const ValueKey('drag-proxy'),
+          color: Colors.transparent,
+          elevation: 2 * t,
+          shadowColor: Colors.black.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(radius),
+          child: child,
+        ),
+      );
+    },
+  );
 }
