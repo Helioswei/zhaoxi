@@ -81,6 +81,7 @@ jobs:
           name: android-apk
           path: app/build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
+          retention-days: 3
 
   # ------------------------------------------------------------------ macOS
   macos:
@@ -113,6 +114,7 @@ jobs:
           name: macos-app
           path: app/build/macos/Build/Products/Release/zhaoxi-macos.zip
           if-no-files-found: error
+          retention-days: 3
 
   # ---------------------------------------------------------------- Release
   # 打 tag（v*）时，自动把 APK / macOS 包挂到 GitHub Release
